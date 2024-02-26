@@ -178,7 +178,7 @@ int runc(float alpha, float t, char* filename) {
 
     // char[]
     // char[] filename = "valores%d.txt", i;
-    FILE *fptr3 = fopen(filename, "w");
+    FILE *fptr3 = fopen(filename, "a");
     
     
     initialize_matrix();
