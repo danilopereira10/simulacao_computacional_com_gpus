@@ -19,8 +19,8 @@ float randomMatrix[L][C];
 
 //float alpha = 0.1f;
 // #define TEMP 3.0f
-#define N_EQUILIBRIUM 5000
-#define N_AVERAGE 40000
+#define N_EQUILIBRIUM 20000
+#define N_AVERAGE 100000
 
 float total_energy[N_EQUILIBRIUM +N_AVERAGE + 1];
 
