@@ -4,11 +4,7 @@ from matplotlib import pyplot as plt
 
 X = []
 Y = []
-for i in range(31):
-    file1 = open('0.376.txt')
-    file2 = open('0.637.txt')
-    file3 = open('0.8.txt')
-    file4 = open('1.0.txt')
+
 with open('0.376.txt', 'r') as datafile:
     plotting = csv.reader(datafile, delimiter=',')
     for ROWS in plotting:
