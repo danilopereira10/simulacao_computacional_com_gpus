@@ -7,13 +7,10 @@
 
 
 #define L 240
-#define C 10
 // #define J0 1.0f
 // #define J1 0.0f
 // #define J2 -1.0f // Valor de alpha = 1, com J_0=1 (paper Selke 1981)
 
-int matrix[L][C];
-float randomMatrix[L][C];
 
 //int rand();
 
@@ -28,10 +25,10 @@ float total_energy[N_EQUILIBRIUM +N_AVERAGE + 1];
 
 enum Color {BLACK, WHITE, GREEN};
 
-void initialize_matrix() {
+void initialize_matrix(int N, int matrix[][N], float randomMatrix[][N]) {
 
     for (int i = 0; i < L; i++) {
-        for (int j = 0; j < C; j++) {
+        for (int j = 0; j < N; j++) {
             //matrix[i][j] = 1.0 *    rand() / (INT_MAX / 2) == 0 ? -1 : 1;
             //matrix[i][j] = ((double)   (rand() / (RAND_MAX))) < 0.5 ? -1 : 1;
             matrix[i][j] = 1;
@@ -41,10 +38,10 @@ void initialize_matrix() {
 
 }
 
-void reinitialize_random_matrix() {
+void reinitialize_random_matrix(int N, float randomMatrix[][N]) {
 
     for (int i = 0; i < L; i++) {
-        for (int j = 0; j < C; j++) {
+        for (int j = 0; j < N; j++) {
             //matrix[i][j] = 1.0 *    rand() / (INT_MAX / 2) == 0 ? -1 : 1;
             randomMatrix[i][j] = ((float) ((rand()) /(float)(RAND_MAX)));
         }
@@ -52,10 +49,10 @@ void reinitialize_random_matrix() {
 
 }
 
-void initialize_ordered() {
+void initialize_ordered(int N, int matrix[][N]) {
 
     for (int i = 0; i < L; i++) {
-        for (int j = 0; j < C; j++) {
+        for (int j = 0; j < N; j++) {
             matrix[i][j] = 1;
         
         }
@@ -63,13 +60,13 @@ void initialize_ordered() {
 
 }
 
-void initialize_total_energy(int d, float J0, float J1, float J2) {
+void initialize_total_energy(int d, float J0, float J1, float J2, int N, int matrix[][N]) {
     float sum = 0.0;
     total_energy[d] = 0.0;
     for (int i = 0; i < L; i++) {
-        for (int j = 0; j < C; j++) {
-	    int jless = (j - 1 >= 0) ? j - 1 : C -1;
-        int jplus = (j + 1 < C) ? j + 1 : 0;
+        for (int j = 0; j < N; j++) {
+	    int jless = (j - 1 >= 0) ? j - 1 : N -1;
+        int jplus = (j + 1 < N) ? j + 1 : 0;
         int iless = (i - 1 >= 0) ? i - 1 : L - 1;
         int iplus = (i + 1 < L) ? i + 1 : 0;
         //int jless2 = (j-2>=0) ? j-2 : j-2+C;
@@ -84,15 +81,15 @@ void initialize_total_energy(int d, float J0, float J1, float J2) {
     //total_energy *= 0.5;
 }
 
-void flip_spins(enum Color color, float J0, float J1, float J2, float t) {
+void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, int matrix[][N], float randomMatrix[][N]) {
     for (int i = 0; i < L; i++) {
         int j = i % 3 + color;
         if (j >= 3) {
             j -= 3;
         }
-        for (;j < C; j+=3) {
-            int jless = (j - 1 >= 0) ? j - 1 : C -1;
-            int jplus = (j + 1 < C) ? j + 1 : 0;
+        for (;j < N; j+=3) {
+            int jless = (j - 1 >= 0) ? j - 1 : N -1;
+            int jplus = (j + 1 < N) ? j + 1 : 0;
             int iless = (i - 1 >= 0) ? i - 1 : L - 1;
             int iplus = (i + 1 < L) ? i + 1 : 0;
             //int jless2 = (j-2>=0) ? j-2 : j-2+C;
@@ -123,7 +120,7 @@ void flip_spins(enum Color color, float J0, float J1, float J2, float t) {
 }
 
 
-void write_matrix(FILE *fptr, FILE *fptr2, int i) {
+void write_matrix(FILE *fptr, FILE *fptr2, int i, int N, int matrix[][N]) {
     //int num;
     
 
@@ -134,7 +131,7 @@ void write_matrix(FILE *fptr, FILE *fptr2, int i) {
     //     exit(1);             
     // } 
     for (int i = 0; i < L; i++) {
-        for (int j = 0; j < C; j++) {
+        for (int j = 0; j < N; j++) {
             //fprintf(fptr, "%d ", (int)matrix[i][j]);
             if(matrix[i][j] == 1) {
                 //printf("opa");
@@ -160,7 +157,7 @@ void write_values(FILE *fptr3, float t, float sh) {
 
 
 
-int runc(float alpha, float t, char* filename) {
+int runc(float alpha, float t, char* filename, int N) {
     clock_t start, end;
     
  
@@ -180,10 +177,12 @@ int runc(float alpha, float t, char* filename) {
     // char[] filename = "valores%d.txt", i;
     FILE *fptr3 = fopen(filename, "a");
     
+    int matrix[L][N];
+    float randomMatrix[L][N];
     
-    initialize_matrix();
+    initialize_matrix(N, matrix, randomMatrix);
     //initialize_ordered();
-    initialize_total_energy(0, J0, J1, J2);
+    initialize_total_energy(0, J0, J1, J2, N, matrix);
     //printf("%f", total_energy);
     //FILE *fptr, *fptr2, *fptr3;
     // fptr = fopen("arquivo_eq.txt", "w");
@@ -191,11 +190,11 @@ int runc(float alpha, float t, char* filename) {
     
     for (int i = 0; i < N_EQUILIBRIUM; i++) {
         //write_matrix(fptr, fptr2, i); 
-        flip_spins(BLACK, J0, J1, J2, t);
-        flip_spins(WHITE, J0, J1, J2, t);
-        flip_spins(GREEN, J0, J1, J2, t);
-        initialize_total_energy(i+1, J0, J1, J2);
-        reinitialize_random_matrix();
+        flip_spins(BLACK, J0, J1, J2, t, N, matrix, randomMatrix);
+        flip_spins(WHITE, J0, J1, J2, t, N, matrix, randomMatrix);
+        flip_spins(GREEN, J0, J1, J2, t, N, matrix, randomMatrix);
+        initialize_total_energy(i+1, J0, J1, J2, N, matrix);
+        reinitialize_random_matrix(N, randomMatrix);
     }
     // fclose(fptr);
     // fclose(fptr2);
@@ -205,11 +204,11 @@ int runc(float alpha, float t, char* filename) {
     // fptr2 = fopen("energia_av.txt", "w");
     for (int i = 0; i < N_AVERAGE; i++) {
         //write_matrix(fptr, fptr2, N_EQUILIBRIUM+i);
-        flip_spins(BLACK, J0, J1, J2, t);
-        flip_spins(WHITE, J0, J1, J2, t);
-        flip_spins(GREEN, J0, J1, J2, t);
-        initialize_total_energy(1+N_EQUILIBRIUM+i, J0, J1, J2);
-        reinitialize_random_matrix();
+        flip_spins(BLACK, J0, J1, J2, t, N, matrix, randomMatrix);
+        flip_spins(WHITE, J0, J1, J2, t, N, matrix, randomMatrix);
+        flip_spins(GREEN, J0, J1, J2, t, N, matrix, randomMatrix);
+        initialize_total_energy(1+N_EQUILIBRIUM+i, J0, J1, J2, N, matrix);
+        reinitialize_random_matrix(N, randomMatrix);
     }
     // fclose(fptr);
     // fclose(fptr2);
@@ -225,7 +224,7 @@ int runc(float alpha, float t, char* filename) {
         variance += (total_energy[i]-av_energy)*(total_energy[i]-av_energy);
     }
     variance = variance / (N_AVERAGE);
-    float specific_heat = variance / (t*t*L*C);
+    float specific_heat = variance / (t*t*L*N);
     write_values(fptr3, t, specific_heat);
     //TEMP : 1.5f -> specific_heat: 0.233231202
     //TEMP : 2.0f -> specific_heat: 0.868345141
@@ -251,5 +250,6 @@ int main(int argc, char* argv[]) {
     float alpha = atof(argv[1]);
     float t = atof(argv[2]);
     char* fileName = argv[3];
-    runc(alpha, t, fileName);
+    int N = atoi(argv[4]);
+    runc(alpha, t, fileName, N);
 }
