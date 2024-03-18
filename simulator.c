@@ -77,16 +77,13 @@ void initialize_total_energy(int d, float J0, float J1, float J2, int N, int mat
             sum += -1.0 * matrix[i][j]*(J1*(matrix[iplus][j]+matrix[iless][j])+J2*(matrix[iless2][j] +matrix[iplus2][j]) + J0*(matrix[i][jless] + matrix[i][jplus]));
         }
     }
-    total_energy[d] = sum * 0.5;
+    total_energy[d] = sum / 2;
     //total_energy *= 0.5;
 }
 
 void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, int matrix[][N], float randomMatrix[][N]) {
     for (int i = 0; i < L; i++) {
-        int j = i % 3 + color;
-        if (j >= 3) {
-            j -= 3;
-        }
+        int j = (i+color) % 3;
         for (;j < N; j+=3) {
             int jless = (j - 1 >= 0) ? j - 1 : N -1;
             int jplus = (j + 1 < N) ? j + 1 : 0;
@@ -188,7 +185,7 @@ int runc(float alpha, float t, char* filename, int N) {
     // fptr = fopen("arquivo_eq.txt", "w");
     // fptr2 = fopen("energia_eq.txt", "w");
     
-    for (int i = 0; i < N_EQUILIBRIUM; i++) {
+    for (int i = 0; i < N_EQUILIBRIUM+N_AVERAGE; i++) {
         //write_matrix(fptr, fptr2, i); 
         flip_spins(BLACK, J0, J1, J2, t, N, matrix, randomMatrix);
         flip_spins(WHITE, J0, J1, J2, t, N, matrix, randomMatrix);
@@ -202,14 +199,14 @@ int runc(float alpha, float t, char* filename, int N) {
 
     // fptr = fopen("arquivo_av.txt", "w");
     // fptr2 = fopen("energia_av.txt", "w");
-    for (int i = 0; i < N_AVERAGE; i++) {
-        //write_matrix(fptr, fptr2, N_EQUILIBRIUM+i);
-        flip_spins(BLACK, J0, J1, J2, t, N, matrix, randomMatrix);
-        flip_spins(WHITE, J0, J1, J2, t, N, matrix, randomMatrix);
-        flip_spins(GREEN, J0, J1, J2, t, N, matrix, randomMatrix);
-        initialize_total_energy(1+N_EQUILIBRIUM+i, J0, J1, J2, N, matrix);
-        reinitialize_random_matrix(N, randomMatrix);
-    }
+    // for (int i = 0; i < N_AVERAGE; i++) {
+    //     //write_matrix(fptr, fptr2, N_EQUILIBRIUM+i);
+    //     flip_spins(BLACK, J0, J1, J2, t, N, matrix, randomMatrix);
+    //     flip_spins(WHITE, J0, J1, J2, t, N, matrix, randomMatrix);
+    //     flip_spins(GREEN, J0, J1, J2, t, N, matrix, randomMatrix);
+    //     initialize_total_energy(1+N_EQUILIBRIUM+i, J0, J1, J2, N, matrix);
+    //     reinitialize_random_matrix(N, randomMatrix);
+    // }
     // fclose(fptr);
     // fclose(fptr2);
     //fclose(fptr3);

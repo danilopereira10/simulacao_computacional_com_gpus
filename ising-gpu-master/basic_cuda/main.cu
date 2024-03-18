@@ -45,13 +45,25 @@
 #define J0 1.0f
 #define J1 0.0f
 #define J2 -1.0f
-#define N_EQUILIBRIUM 5000
-#define N_AVERAGE 40000
+#define N_EQUILIBRIUM 20000
+#define N_AVERAGE 100000
 
-float total_energy[N_EQUILIBRIUM +N_AVERAGE + 1];
+
 
 
 enum class Color : unsigned short {BLACK = 0, WHITE = 1, GREEN = 2};
+
+struct saxpy_functor
+{
+    const float a;
+
+    saxpy_functor(float _a) : a(_a) {}
+
+    __host__ __device__
+        float operator()(const float& x, const float& y) const {
+            return (x-a) * (x - a);
+        }
+};
 
 // Initialize lattice spins
 __global__ void init_spins(signed char* lattice,
@@ -78,13 +90,13 @@ __global__ void copy_lattice(const signed char* __restrict__ lattice, signed cha
 }
 
 //template<bool is_black>
-__global__ void update_lattice(float* total_energy, Color color, signed char* lattice,
+__global__ void update_lattice(thrust::device_vector<float> total_energy, Color color, signed char* lattice,
                                const signed char* __restrict__ two_lattice,
                                const signed char* __restrict__ third_lattice,
                                const float* __restrict__ randvals,
                                const float inv_temp,
                                const long long nx,
-                               const long long ny) {
+                               const long long ny, thrust::device_vector te, int tei) {
   const long long tid = static_cast<long long>(blockDim.x) * blockIdx.x + threadIdx.x;
   const int i = tid / ny;
   const int j = tid % ny;
@@ -208,7 +220,7 @@ void write_values(signed char *lattice_g, signed char *lattice_b, signed char *l
   free(lattice_w_h);
 }
 
-void update(float* sum, signed char *lattice_g, signed char *lattice_b, signed char *lattice_w, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny) {
+void update(thrust::device_vector<float> total_energy, float* sum, signed char *lattice_g, signed char *lattice_b, signed char *lattice_w, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny) {
 
   // Setup CUDA launch configuration
   int blocks = (nx * ny/3 + THREADS - 1) / THREADS;
@@ -216,15 +228,19 @@ void update(float* sum, signed char *lattice_g, signed char *lattice_b, signed c
   // Update black
   //copy_lattice<<<blocks, THREADS>>>(lattice_b, extra_lattice, nx, ny/2);
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/3));
-  update_lattice<<<blocks, THREADS>>>(sum, Color::BLACK, lattice_b, lattice_w, lattice_g, randvals, inv_temp, nx, ny/3);
+  update_lattice<<<blocks, THREADS>>>(thrust::device_vector<float> total_energy, sum, Color::BLACK, lattice_b, lattice_w, lattice_g, randvals, inv_temp, nx, ny/3);
 
   // Update white
   //copy_lattice<<<blocks, THREADS>>>(lattice_w, extra_lattice, nx, ny/2);
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/3));
-  update_lattice<<<blocks, THREADS>>>(sum, Color::WHITE, lattice_w, lattice_g, lattice_b,  randvals, inv_temp, nx, ny/3);
+  update_lattice<<<blocks, THREADS>>>(thrust::device_vector<float> total_energy, sum, Color::WHITE, lattice_w, lattice_g, lattice_b,  randvals, inv_temp, nx, ny/3);
 
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/3));
-  update_lattice<<<blocks, THREADS>>>(sum, Color::GREEN, lattice_g, lattice_b, lattice_w, randvals, inv_temp, nx, ny/3);
+  update_lattice<<<blocks, THREADS>>>(thrust::device_vector<float> total_energy, sum, Color::GREEN, lattice_g, lattice_b, lattice_w, randvals, inv_temp, nx, ny/3);
+
+  thrust::reduce(total_energy.begin(), total_energy.end());
+  total_energy[0] *= -1;
+  total_energy[0] /= 2;
 }
 
 // void update_average(signed char *lattice_g, signed char *lattice_b, signed char *lattice_w, signed char *extra_lattice, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny) {
@@ -279,14 +295,20 @@ static void usage(const char *pname) {
   exit(EXIT_SUCCESS);
 }
 
+void saxpy_fast(float A, thrust::device_vector<float>& X, thrust::device_vector<float>& Y)
+{
+    // Y <- A * X + Y
+    thrust::transform(X.begin(), X.end(), Y.begin(), Y.begin(), saxpy_functor(A));
+}
+
 int main(int argc, char **argv) {
 
   // Defaults
   long long nx = 240;
   long long ny = 12;
   float alpha = 0.1f;
-  int nwarmup = 5000;
-  int niters = 40000;
+  int nwarmup = N_EQUILIBRIUM;
+  int niters = N_AVERAGE;
   bool write = false;
   unsigned long long seed = 1234ULL;
 
@@ -358,6 +380,13 @@ int main(int argc, char **argv) {
   CHECK_CUDA(cudaMalloc(&sum, (nx*ny)*sizeof(*sum)));
   //CHECK_CUDA(cudaMalloc(&extra_lattice, nx * ny/2 * sizeof(*extra_lattice)));
 
+  //CHECK_CUDA(cudaMalloc(&total_energy, ()))
+  thrust::device_vector<float> total_energy(nx*ny)[N_EQUILIBRIUM];
+  thrust::device_vector<float> total_energy2(nx*ny)[N_AVERAGE];
+  
+  thrust::device_vector<float> sum2(N_AVERAGE);
+  thrust::device_vector<float> sum3(N_AVERAGE);
+
 
   int blocks = (nx * ny/3 + THREADS - 1) / THREADS;
   CHECK_CURAND(curandGenerateUniform(rng, randvals, (nx*ny/3)));
@@ -370,17 +399,29 @@ int main(int argc, char **argv) {
   // Warmup iterations
   printf("Starting warmup...\n");
   for (int i = 0; i < nwarmup; i++) {
-    update(sum, lattice_g, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
+    update(total_energy[i], sum, lattice_g, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
   }
+  
 
   CHECK_CUDA(cudaDeviceSynchronize());
 
   printf("Starting trial iterations...\n");
   auto t0 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < niters; i++) {
-    update(sum, lattice_g, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
-    if (i % 1000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
+    update(total_energy2[i], sum, lattice_g, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
+    sum2[i] = total_energy2[i][0];
+    sum3[i] = total_energy2[i][0];
+    if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
+  thrust::reduce(sum2.begin(), sum2.end());
+  sum2[0] /= N_AVERAGE;
+  float variance = 0;
+  thrust::device_vector<float> var(N_AVERAGE);
+  thrust::transform(sum3.begin(), sum3.end(), var.begin(), saxpy_functor(sum2[0]));
+
+  thrust::reduce(var.begin(), var.end());
+  var[0] /= N_AVERAGE;
+  float specific_heat = variance / (t * t * nx * ny);
 
   CHECK_CUDA(cudaDeviceSynchronize());
   auto t1 = std::chrono::high_resolution_clock::now();
