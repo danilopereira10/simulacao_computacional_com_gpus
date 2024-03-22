@@ -90,9 +90,9 @@ __global__ void copy_lattice(const signed char* __restrict__ lattice, signed cha
 }
 
 //template<bool is_black>
-__global__ void update_lattice(thrust::device_vector<float> total_energy, Color color, signed char* lattice,
+__global__ void update_lattice(thrust::device_vector<float> spin_energy, Color color, signed char* lattice,
                                const signed char* __restrict__ two_lattice,
-                               const signed char* __restrict__ third_lattice,
+                               const signed char* __restrict__ three_lattice,
                                const float* __restrict__ randvals,
                                const float inv_temp,
                                const long long nx,
@@ -113,16 +113,18 @@ __global__ void update_lattice(thrust::device_vector<float> total_energy, Color 
 
 
   // Compute sum of nearest neighbor spins
-  signed char nn_sum = J1*(two_lattice[inn * ny + j] + third_lattice[ipp * ny + j]) + J2*(two_lattice[ip2 * ny + j] + third_lattice[in2 * ny + j]) + J0*(two_lattice[i * ny + jpp] + third_lattice[i * ny + jnn]);
-  ;
+  signed char nn_sum = J1*(two_lattice[inn * ny + j] + three_lattice,[ipp * ny + j]) +  // vizinho 1 horizontal
+                       J2*(two_lattice[ip2 * ny + j] + three_lattice,[in2 * ny + j]) +  // vizinho 2 horizontal
+                       J0*(two_lattice[i * ny + jpp] + three_lattice,[i * ny + jnn]);   // vizinho 1 vertical
 
   // Determine whether to flip spin
   signed char lij = lattice[i * ny + j];
   float acceptance_ratio = exp(-2.0f * inv_temp * nn_sum * lij);
-  if (randvals[i*ny + j] < acceptance_ratio) {
+
+  if (randvals[i*ny + j] < acceptance_ratio) { // se entrar significa que flipou
     lattice[i * ny + j] = -lij;
+    spin_energy[i*ny +j] = nn_sum;
   }
-  total_energy[i*ny +j] = nn_sum;
 }
 
 // Write lattice configuration to file
