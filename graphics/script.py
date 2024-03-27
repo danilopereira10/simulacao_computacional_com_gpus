@@ -13,7 +13,7 @@ for i in range (len(alpha)):
     t = t1[i]
     
     while(t <= t2[i]):
-        l = ["./simulator", str(alpha[i]), str(t), str(alpha[i])+".txt"]
+        l = ["./simulator", str(alpha[i]), str(t), str(alpha[i])+".txt", "10"]
         subprocess.Popen(l, stdout=subprocess.PIPE)
         t += 0.1
         j +=1
