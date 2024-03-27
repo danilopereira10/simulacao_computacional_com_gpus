@@ -17,7 +17,7 @@
 //float alpha = 0.1f;
 // #define TEMP 3.0f
 #define N_EQUILIBRIUM 20000
-#define N_AVERAGE 100000
+#define N_AVERAGE 1000000
 
 float total_energy[N_EQUILIBRIUM +N_AVERAGE + 1];
 
@@ -64,7 +64,7 @@ void initialize_total_energy(int d, float J0, float J1, float J2, int N, int mat
     float sum = 0.0;
     total_energy[d] = 0.0;
     for (int i = 0; i < L; i++) {
-        for (int j = 0; j < N; j++) {
+        for (int j = 0; j < N; j++) {   
 	    int jless = (j - 1 >= 0) ? j - 1 : N -1;
         int jplus = (j + 1 < N) ? j + 1 : 0;
         int iless = (i - 1 >= 0) ? i - 1 : L - 1;

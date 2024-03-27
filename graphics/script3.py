@@ -19,6 +19,6 @@ for i in range (len(alpha)):
         while (t <= t2[i]):
             l = ["./simulator", str(alpha[i]), str(t), str(n2)+"_"+str(alpha[i])+".txt", str(n2)]
             subprocess.Popen(l, stdout=subprocess.PIPE)
-            t += 0.02
+            t += 0.002
             j += 1
 
