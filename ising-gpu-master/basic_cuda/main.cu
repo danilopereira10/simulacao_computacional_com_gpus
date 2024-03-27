@@ -175,51 +175,15 @@ void write_lattice(signed char *lattice_g, signed char *lattice_b, signed char *
   free(lattice_w_h);
 }
 
-void write_values(signed char *lattice_g, signed char *lattice_b, signed char *lattice_w, std::string filename, long long nx, long long ny) {
-  printf("Writing lattice to %s...\n", filename.c_str());
-  signed char *lattice_h, *lattice_g_h, *lattice_b_h, *lattice_w_h;
-  lattice_h = (signed char*) malloc(nx * ny * sizeof(*lattice_h));
-  lattice_g_h = (signed char*) malloc(nx * ny/3 * sizeof(*lattice_g_h));
-  lattice_b_h = (signed char*) malloc(nx * ny/3 * sizeof(*lattice_b_h));
-  lattice_w_h = (signed char*) malloc(nx * ny/3 * sizeof(*lattice_w_h));
-
-  CHECK_CUDA(cudaMemcpy(lattice_g_h, lattice_g, nx * ny/3 * sizeof(*lattice_g), cudaMemcpyDeviceToHost));
-  CHECK_CUDA(cudaMemcpy(lattice_b_h, lattice_b, nx * ny/3 * sizeof(*lattice_b), cudaMemcpyDeviceToHost));
-  CHECK_CUDA(cudaMemcpy(lattice_w_h, lattice_w, nx * ny/3 * sizeof(*lattice_w), cudaMemcpyDeviceToHost));
-
-  for (int i = 0; i < nx; i++) {
-    for (int j = 0; j < ny/3; j++) {
-        if ((i%3) == 0) {
-            lattice_h[i*ny + 3*j] = lattice_b_h[i*ny/3 + j];
-            lattice_h[i*ny + 3*j+1] = lattice_w_h[i*ny/3 + j];
-            lattice_h[i*ny + 3*j+2] = lattice_g_h[i*ny/3 + j];
-        } else if ((i%3) == 1) {
-            lattice_h[i*ny + 3*j] = lattice_g_h[i*ny/3 + j];
-            lattice_h[i*ny + 3*j+1] = lattice_b_h[i*ny/3 + j];
-            lattice_h[i*ny + 3*j+2] = lattice_w_h[i*ny/3 + j];
-        } else {
-            lattice_h[i*ny + 3*j] = lattice_w_h[i*ny/3 + j];
-            lattice_h[i*ny + 3*j+1] = lattice_g_h[i*ny/3 + j];
-            lattice_h[i*ny + 3*j+2] = lattice_b_h[i*ny/3+j];
-        }
-    }
-  }
-
+void write_values(char* filename, float t, float sh) {
   std::ofstream f;
-  f.open(filename);
+  f.open(filename, std::ios::app);
   if (f.is_open()) {
-    for (int i = 0; i < nx; i++) {
-      for (int j = 0; j < ny; j++) {
-         f << (int)lattice_h[i * ny + j] << " ";
-      }
-      f << std::endl;
-    }
+    f << t << ", " << sh << " ";
+    f << std::endl;
+    
   }
   f.close();
-
-  free(lattice_h);
-  free(lattice_b_h);
-  free(lattice_w_h);
 }
 
 void update(thrust::device_vector<float> total_energy, float* sum, signed char *lattice_g, signed char *lattice_b, signed char *lattice_w, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny) {
@@ -305,58 +269,62 @@ void saxpy_fast(float A, thrust::device_vector<float>& X, thrust::device_vector<
 
 int main(int argc, char **argv) {
 
+  float alpha = atof(argv[1]);
+  float t = atof(argv[2]);
+  char* fileName = argv[3];
+  long long ny = atoi(argv[4]);
   // Defaults
   long long nx = 240;
-  long long ny = 12;
-  float alpha = 0.1f;
+  //long long ny = 12;
+  //float alpha = 0.1f;
   int nwarmup = N_EQUILIBRIUM;
   int niters = N_AVERAGE;
   bool write = false;
   unsigned long long seed = 1234ULL;
 
-  while (1) {
-    static struct option long_options[] = {
-        {     "lattice-n", required_argument, 0, 'x'},
-        {     "lattice-m", required_argument, 0, 'y'},
-        {         "alpha", required_argument, 0, 'y'},
-        {          "seed", required_argument, 0, 's'},
-        {       "nwarmup", required_argument, 0, 'w'},
-        {        "niters", required_argument, 0, 'n'},
-        { "write-lattice",       no_argument, 0, 'o'},
-        {          "help",       no_argument, 0, 'h'},
-        {               0,                 0, 0,   0}
-    };
+  // while (1) {
+  //   // static struct option long_options[] = {
+  //   //     {     "lattice-n", required_argument, 0, 'x'},
+  //   //     {     "lattice-m", required_argument, 0, 'y'},
+  //   //     {         "alpha", required_argument, 0, 'a'},
+  //   //     {          "seed", required_argument, 0, 's'},
+  //   //     {       "nwarmup", required_argument, 0, 'w'},
+  //   //     {        "niters", required_argument, 0, 'n'},
+  //   //     { "write-lattice",       no_argument, 0, 'o'},
+  //   //     {          "help",       no_argument, 0, 'h'},
+  //   //     {               0,                 0, 0,   0}
+  //   // };
 
-    int option_index = 0;
-    int ch = getopt_long(argc, argv, "x:y:a:s:w:n:oh", long_options, &option_index);
-    if (ch == -1) break;
+  //   // int option_index = 0;
+  //   // int ch = getopt_long(argc, argv, "x:y:a:s:w:n:oh", long_options, &option_index);
+  //   // if (ch == -1) break;
 
-    switch(ch) {
-      case 0:
-        break;
-      case 'x':
-        nx = atoll(optarg); break;
-      case 'y':
-        ny = atoll(optarg); break;
-      case 'a':
-        alpha = atof(optarg); break;
-      case 's':
-        seed = atoll(optarg); break;
-      case 'w':
-        nwarmup = atoi(optarg); break;
-      case 'n':
-        niters = atoi(optarg); break;
-      case 'o':
-        write = true; break;
-      case 'h':
-        usage(argv[0]); break;
-      case '?':
-        exit(EXIT_FAILURE);
-      default:
-        fprintf(stderr, "unknown option: %c\n", ch);
-        exit(EXIT_FAILURE);
-    }
-  }
+  //   // switch(ch) {
+  //   //   case 0:
+  //   //     break;
+  //   //   case 'x':
+  //   //     nx = atoll(optarg); break;
+  //   //   case 'y':
+  //   //     ny = atoll(optarg); break;
+  //   //   case 'a':
+  //   //     alpha = atof(optarg); break;
+  //   //   case 's':
+  //   //     seed = atoll(optarg); break;
+  //   //   case 'w':
+  //   //     nwarmup = atoi(optarg); break;
+  //   //   case 'n':
+  //   //     niters = atoi(optarg); break;
+  //   //   case 'o':
+  //   //     write = true; break;
+  //   //   case 'h':
+  //   //     usage(argv[0]); break;
+  //   //   case '?':
+  //   //     exit(EXIT_FAILURE);
+  //   //   default:
+  //   //     fprintf(stderr, "unknown option: %c\n", ch);
+  //   //     exit(EXIT_FAILURE);
+  //   // }
+  // }
 
   // Check arguments
   if (nx % 2 != 0 || ny % 2 != 0) {
@@ -424,6 +392,7 @@ int main(int argc, char **argv) {
   thrust::reduce(var.begin(), var.end());
   var[0] /= N_AVERAGE;
   float specific_heat = variance / (t * t * nx * ny);
+  write_values(filename, t, specific_heat);
 
   CHECK_CUDA(cudaDeviceSynchronize());
   auto t1 = std::chrono::high_resolution_clock::now();
