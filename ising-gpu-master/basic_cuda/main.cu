@@ -289,13 +289,13 @@ int main(int argc, char **argv) {
   float t_end = atof(argv[3]);
   float step = atof(argv[4]);
   char* fileName = argv[5];
-  long long ny = atoi(argv[6]);
+  long long ny = atoll(argv[6]);
+  int niters = atoi(argv[7]);
   // Defaults
   long long nx = 240;
   //long long ny = 12;
   //float alpha = 0.1f;
   int nwarmup = N_EQUILIBRIUM;
-  int niters = N_AVERAGE;
   bool write = false;
   unsigned long long seed = 1234ULL;
 

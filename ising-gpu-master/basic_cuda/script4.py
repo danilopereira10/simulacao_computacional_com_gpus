@@ -9,10 +9,11 @@ t1 =  [0.6, 1.2, 1.4, 1.5]
 t2 = [2.5, 2.7, 3.0,3.0]
 
 j = 0
+niters = str("100000")
 for i in range (len(alpha)):
     t = t1[i]
     while(t <= t2[i]):
-        l = ["./ising_basic", str(alpha[i]), str(t), "0", "0", str(alpha[i])+".txt", "10"]
+        l = ["./ising_basic", str(alpha[i]), str(t), "0", "0", str(alpha[i])+".txt", "10", niters]
         subprocess.check_call(l, stdout=subprocess.PIPE)
         t += 0.002
         j +=1
@@ -27,7 +28,7 @@ for i in range (len(alpha)):
 
     
     while(t <= t2[i]):
-        l = ["./ising_basic", str(alpha[i]), str(t), "0", "0", str(alpha[i])+".txt", "10"]
+        l = ["./ising_basic", str(alpha[i]), str(t), "0", "0", str(alpha[i])+".txt", "10", niters]
         subprocess.check_call(l, stdout=subprocess.PIPE)
         t += 0.002
         j +=1
@@ -45,7 +46,7 @@ for i in range (len(alpha)):
         al = alpha[i]
         t = t1[i]
         while (t <= t2[i]):
-            l = ["./ising_basic", str(alpha[i]), str(t), "0", "0", str(n2)+"_"+str(alpha[i])+".txt", str(n2)]
+            l = ["./ising_basic", str(alpha[i]), str(t), "0", "0", str(n2)+"_"+str(alpha[i])+".txt", str(n2), niters]
             subprocess.check_call(l, stdout=subprocess.PIPE)
             t += 0.002
             j += 1
