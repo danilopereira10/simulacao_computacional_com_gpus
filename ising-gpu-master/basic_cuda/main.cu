@@ -318,7 +318,7 @@ int main(int argc, char **argv) {
   CHECK_CUDA(cudaMalloc(&randvals, (nx * ny/3) * sizeof(*randvals)));
 
   // Setup black and white lattice arrays on device
-  signed char *lattice_b, *lattice_w, *lattice_g, *extra_lattice;
+  signed char *lattice_b, *lattice_w, *lattice_g;
 
   CHECK_CUDA(cudaMalloc(&lattice_b, (nx * ny/3) * sizeof(*lattice_b)));
   CHECK_CUDA(cudaMalloc(&lattice_w, (nx * ny/3) * sizeof(*lattice_w)));
@@ -359,7 +359,7 @@ int main(int argc, char **argv) {
   printf("Starting trial iterations...\n");
   auto t0 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < niters; i++) {
-    update(total_energy2[i], lattice_g, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
+    update(spin_energy, lattice_g, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
     total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end());
     if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
@@ -369,7 +369,7 @@ int main(int argc, char **argv) {
 
   variance /= N_AVERAGE;
   float specific_heat = variance / (t * t * nx * ny);
-  write_values(filename, t, specific_heat);
+  write_values(fileName, t, specific_heat);
 
   CHECK_CUDA(cudaDeviceSynchronize());
   auto t1 = std::chrono::high_resolution_clock::now();
