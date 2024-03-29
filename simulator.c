@@ -240,6 +240,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
         
         fclose(fptr3);
         FILE *fptr4 = fopen("time_taken.txt", "a");
+        fprintf(fptr4, "%f, %f ", t,  specific_heat);
         fprintf(fptr4, "%f sec", time_taken);
         fprintf(fptr4, "\n");
         fclose(fptr4);
