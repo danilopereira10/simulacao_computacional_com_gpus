@@ -46,7 +46,7 @@
 #define J1 0.0f
 #define J2 -1.0f
 #define N_EQUILIBRIUM 20000
-#define N_AVERAGE 100000
+#define N_AVERAGE 1000000
 
 
 
