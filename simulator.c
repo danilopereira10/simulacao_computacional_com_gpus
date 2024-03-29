@@ -241,7 +241,7 @@ int runc(float alpha, float t, char* filename, int N) {
     FILE *fptr4 = fopen("time_taken.txt", "a");
     fprintf(fptr4, "%f sec", time_taken);
     fprintf(fptr4, "\n");
-    close(fptr4);
+    fclose(fptr4);
     
     
     return 0;
