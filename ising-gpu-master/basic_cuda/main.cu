@@ -301,10 +301,10 @@ int main(int argc, char **argv) {
 
 
   // Check arguments
-  if (nx % 3 != 0 || ny % 3 != 0) {
-    fprintf(stderr, "ERROR: Lattice dimensions must be multiple of 3.\n");
-    exit(EXIT_FAILURE);
-  }
+  // if (nx % 3 != 0 || ny % 3 != 0) {
+  //   fprintf(stderr, "ERROR: Lattice dimensions must be multiple of 3.\n");
+  //   exit(EXIT_FAILURE);
+  // }
   while (t <= t_end) {
     // Setup cuRAND generator
     curandGenerator_t rng;
