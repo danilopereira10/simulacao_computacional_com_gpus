@@ -152,7 +152,7 @@ __global__ void update_lattice(thrust::device_vector<float> spin_energy, Color c
   signed char nn_sum;
   nn_sum = J1*(three_lattice[inn * ny + j] + two_lattice[ipp * ny + j]) +  // vizinho 1 vertical
                       J2*(three_lattice[ip2 * ny + j] + two_lattice[in2 * ny + j]) +  // vizinho 2 vertical
-                      J0*(two_lattice[i * ny + j2] + three_lattice[i * ny + jnn]);   // vizinho 1 horizontal
+                      J0*(two_lattice[i * ny + j2] + three_lattice[i * ny + j3]);   // vizinho 1 horizontal
 
   
 
@@ -225,7 +225,7 @@ void write_values(char* filename, float t, float sh) {
   f.close();
 }
 
-void update(thrust::device_vector<float> total_energy, float* sum, signed char *lattice_g, signed char *lattice_b, signed char *lattice_w, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny) {
+void update(thrust::device_vector<float> total_energy, signed char *lattice_g, signed char *lattice_b, signed char *lattice_w, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny) {
 
   // Setup CUDA launch configuration
   int blocks = (nx * ny/3 + THREADS - 1) / THREADS;
@@ -233,15 +233,15 @@ void update(thrust::device_vector<float> total_energy, float* sum, signed char *
   // Update black
   //copy_lattice<<<blocks, THREADS>>>(lattice_b, extra_lattice, nx, ny/2);
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/3));
-  update_lattice<<<blocks, THREADS>>>(total_energy, sum, Color::BLACK, lattice_b, lattice_w, lattice_g, randvals, inv_temp, nx, ny/3);
+  update_lattice<<<blocks, THREADS>>>(total_energy, Color::BLACK, lattice_b, lattice_w, lattice_g, randvals, inv_temp, nx, ny/3);
 
   // Update white
   //copy_lattice<<<blocks, THREADS>>>(lattice_w, extra_lattice, nx, ny/2);
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/3));
-  update_lattice<<<blocks, THREADS>>>(total_energy, sum, Color::WHITE, lattice_w, lattice_g, lattice_b,  randvals, inv_temp, nx, ny/3);
+  update_lattice<<<blocks, THREADS>>>(total_energy, Color::WHITE, lattice_w, lattice_g, lattice_b,  randvals, inv_temp, nx, ny/3);
 
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/3));
-  update_lattice<<<blocks, THREADS>>>(total_energy, sum, Color::GREEN, lattice_g, lattice_b, lattice_w, randvals, inv_temp, nx, ny/3);
+  update_lattice<<<blocks, THREADS>>>(total_energy, Color::GREEN, lattice_g, lattice_b, lattice_w, randvals, inv_temp, nx, ny/3);
 
   thrust::reduce(total_energy.begin(), total_energy.end());
   total_energy[0] /= -2;
@@ -319,11 +319,10 @@ int main(int argc, char **argv) {
 
   // Setup black and white lattice arrays on device
   signed char *lattice_b, *lattice_w, *lattice_g, *extra_lattice;
-  float *sum;
+
   CHECK_CUDA(cudaMalloc(&lattice_b, (nx * ny/3) * sizeof(*lattice_b)));
   CHECK_CUDA(cudaMalloc(&lattice_w, (nx * ny/3) * sizeof(*lattice_w)));
   CHECK_CUDA(cudaMalloc(&lattice_g, (nx*ny/3) * sizeof(*lattice_g)))
-  CHECK_CUDA(cudaMalloc(&sum, (nx*ny)*sizeof(*sum)));
   //CHECK_CUDA(cudaMalloc(&extra_lattice, nx * ny/2 * sizeof(*extra_lattice)));
 
   //CHECK_CUDA(cudaMalloc(&total_energy, ()))
@@ -339,7 +338,7 @@ int main(int argc, char **argv) {
   init_spins<<<blocks, THREADS>>>(lattice_g, randvals, nx, ny/3);
 
 
-  thurst::device_vector<float> spin_energy(nx*ny);
+  thrust::device_vector<float> spin_energy(nx*ny);
   CHECK_CUDA(cudaMalloc(&spin_energy, nx*ny, sizeof(*float)));
 
   initialize_spin_energy(spin_energy, Color::WHITE, lattice_b, lattice_g, nx, ny/3);
@@ -352,7 +351,7 @@ int main(int argc, char **argv) {
   // Warmup iterations
   printf("Starting warmup...\n");
   for (int i = 0; i < nwarmup; i++) {
-    update(spin_energy, sum, lattice_g, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
+    update(spin_energy, lattice_g, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
   }
   
 
@@ -361,7 +360,7 @@ int main(int argc, char **argv) {
   printf("Starting trial iterations...\n");
   auto t0 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < niters; i++) {
-    update(total_energy2[i], sum, lattice_g, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
+    update(total_energy2[i], lattice_g, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
     total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end());
     if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
