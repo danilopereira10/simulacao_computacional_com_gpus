@@ -89,6 +89,39 @@ __global__ void copy_lattice(const signed char* __restrict__ lattice, signed cha
   extra_lattice[i*ny + j] = lattice[i*ny + j];
 }
 
+__global__ void initialize_spin_energy(thrust::device_vector<float> spin_energy, Color color, 
+                               const signed char* __restrict__ two_lattice,
+                               const signed char* __restrict__ three_lattice,
+                               const long long nx,
+                               const long long ny) {
+  const long long tid = static_cast<long long>(blockDim.x) * blockIdx.x + threadIdx.x;
+  const int i = tid / ny;
+  const int j = tid % ny;
+
+  if (i >= nx || j >= ny) return;
+
+  // Set stencil indices with periodicity
+  int ipp = (i + 1 < nx) ? i + 1 : 0;
+  int ip2 = (i + 2 < nx) ? i + 2 : i + 2 - nx;
+  int inn = (i - 1 >= 0) ? i - 1: nx - 1;
+  int in2 = (i - 2 >= 0) ? i - 2 : i - 2 + ny;
+  int jpp = (j + 1 < ny) ? j + 1 : 0;
+  int jnn = (j - 1 >= 0) ? j - 1: ny - 1;
+  int j2 = (j == (ny-1)) ? jpp : j;
+  int j3 = (j == 0) ? jnn : j;
+
+
+  // Compute sum of nearest neighbor spins
+
+  signed char nn_sum;
+  nn_sum = J1*(three_lattice[inn * ny + j] + two_lattice[ipp * ny + j]) +  // vizinho 1 vertical
+                      J2*(three_lattice[ip2 * ny + j] + two_lattice[in2 * ny + j]) +  // vizinho 2 vertical
+                      J0*(two_lattice[i * ny + j2] + three_lattice[i * ny + jnn]);   // vizinho 1 horizontal
+
+  spin_energy[3*(i*ny + j) +color] = nn_sum;
+  
+}
+
 //template<bool is_black>
 __global__ void update_lattice(thrust::device_vector<float> spin_energy, Color color, signed char* lattice,
                                const signed char* __restrict__ two_lattice,
@@ -110,12 +143,18 @@ __global__ void update_lattice(thrust::device_vector<float> spin_energy, Color c
   int in2 = (i - 2 >= 0) ? i - 2 : i - 2 + ny;
   int jpp = (j + 1 < ny) ? j + 1 : 0;
   int jnn = (j - 1 >= 0) ? j - 1: ny - 1;
+  int j2 = (j == (ny-1)) ? jpp : j;
+  int j3 = (j == 0) ? jnn : j;
 
 
   // Compute sum of nearest neighbor spins
-  signed char nn_sum = J1*(two_lattice[inn * ny + j] + three_lattice,[ipp * ny + j]) +  // vizinho 1 horizontal
-                       J2*(two_lattice[ip2 * ny + j] + three_lattice,[in2 * ny + j]) +  // vizinho 2 horizontal
-                       J0*(two_lattice[i * ny + jpp] + three_lattice,[i * ny + jnn]);   // vizinho 1 vertical
+
+  signed char nn_sum;
+  nn_sum = J1*(three_lattice[inn * ny + j] + two_lattice[ipp * ny + j]) +  // vizinho 1 vertical
+                      J2*(three_lattice[ip2 * ny + j] + two_lattice[in2 * ny + j]) +  // vizinho 2 vertical
+                      J0*(two_lattice[i * ny + j2] + three_lattice[i * ny + jnn]);   // vizinho 1 horizontal
+
+  
 
   // Determine whether to flip spin
   signed char lij = lattice[i * ny + j];
@@ -123,7 +162,7 @@ __global__ void update_lattice(thrust::device_vector<float> spin_energy, Color c
 
   if (randvals[i*ny + j] < acceptance_ratio) { // se entrar significa que flipou
     lattice[i * ny + j] = -lij;
-    spin_energy[i*ny +j] = nn_sum;
+    spin_energy[3*(i*ny + j) +color] = nn_sum;
   }
 }
 
@@ -194,39 +233,19 @@ void update(thrust::device_vector<float> total_energy, float* sum, signed char *
   // Update black
   //copy_lattice<<<blocks, THREADS>>>(lattice_b, extra_lattice, nx, ny/2);
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/3));
-  update_lattice<<<blocks, THREADS>>>(thrust::device_vector<float> total_energy, sum, Color::BLACK, lattice_b, lattice_w, lattice_g, randvals, inv_temp, nx, ny/3);
+  update_lattice<<<blocks, THREADS>>>(total_energy, sum, Color::BLACK, lattice_b, lattice_w, lattice_g, randvals, inv_temp, nx, ny/3);
 
   // Update white
   //copy_lattice<<<blocks, THREADS>>>(lattice_w, extra_lattice, nx, ny/2);
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/3));
-  update_lattice<<<blocks, THREADS>>>(thrust::device_vector<float> total_energy, sum, Color::WHITE, lattice_w, lattice_g, lattice_b,  randvals, inv_temp, nx, ny/3);
+  update_lattice<<<blocks, THREADS>>>(total_energy, sum, Color::WHITE, lattice_w, lattice_g, lattice_b,  randvals, inv_temp, nx, ny/3);
 
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/3));
-  update_lattice<<<blocks, THREADS>>>(thrust::device_vector<float> total_energy, sum, Color::GREEN, lattice_g, lattice_b, lattice_w, randvals, inv_temp, nx, ny/3);
+  update_lattice<<<blocks, THREADS>>>(total_energy, sum, Color::GREEN, lattice_g, lattice_b, lattice_w, randvals, inv_temp, nx, ny/3);
 
   thrust::reduce(total_energy.begin(), total_energy.end());
-  total_energy[0] *= -1;
-  total_energy[0] /= 2;
+  total_energy[0] /= -2;
 }
-
-// void update_average(signed char *lattice_g, signed char *lattice_b, signed char *lattice_w, signed char *extra_lattice, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny) {
-
-//   // Setup CUDA launch configuration
-//   int blocks = (nx * ny/3 + THREADS - 1) / THREADS;
-
-//   // Update black
-//   //copy_lattice<<<blocks, THREADS>>>(lattice_b, extra_lattice, nx, ny/2);
-//   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/3));
-//   update_lattice<<<blocks, THREADS>>>(Color::BLACK, lattice_b, lattice_w, lattice_g, randvals, inv_temp, nx, ny/3);
-
-//   // Update white
-//   //copy_lattice<<<blocks, THREADS>>>(lattice_w, extra_lattice, nx, ny/2);
-//   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/3));
-//   update_lattice<<<blocks, THREADS>>>(Color::WHITE, lattice_w, lattice_g, lattice_b,  randvals, inv_temp, nx, ny/3);
-
-//   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/3));
-//   update_lattice<<<blocks, THREADS>>>(Color::GREEN, lattice_g, lattice_b, lattice_w, randvals, inv_temp, nx, ny/3);
-// }
 
 static void usage(const char *pname) {
 
@@ -282,53 +301,10 @@ int main(int argc, char **argv) {
   bool write = false;
   unsigned long long seed = 1234ULL;
 
-  // while (1) {
-  //   // static struct option long_options[] = {
-  //   //     {     "lattice-n", required_argument, 0, 'x'},
-  //   //     {     "lattice-m", required_argument, 0, 'y'},
-  //   //     {         "alpha", required_argument, 0, 'a'},
-  //   //     {          "seed", required_argument, 0, 's'},
-  //   //     {       "nwarmup", required_argument, 0, 'w'},
-  //   //     {        "niters", required_argument, 0, 'n'},
-  //   //     { "write-lattice",       no_argument, 0, 'o'},
-  //   //     {          "help",       no_argument, 0, 'h'},
-  //   //     {               0,                 0, 0,   0}
-  //   // };
-
-  //   // int option_index = 0;
-  //   // int ch = getopt_long(argc, argv, "x:y:a:s:w:n:oh", long_options, &option_index);
-  //   // if (ch == -1) break;
-
-  //   // switch(ch) {
-  //   //   case 0:
-  //   //     break;
-  //   //   case 'x':
-  //   //     nx = atoll(optarg); break;
-  //   //   case 'y':
-  //   //     ny = atoll(optarg); break;
-  //   //   case 'a':
-  //   //     alpha = atof(optarg); break;
-  //   //   case 's':
-  //   //     seed = atoll(optarg); break;
-  //   //   case 'w':
-  //   //     nwarmup = atoi(optarg); break;
-  //   //   case 'n':
-  //   //     niters = atoi(optarg); break;
-  //   //   case 'o':
-  //   //     write = true; break;
-  //   //   case 'h':
-  //   //     usage(argv[0]); break;
-  //   //   case '?':
-  //   //     exit(EXIT_FAILURE);
-  //   //   default:
-  //   //     fprintf(stderr, "unknown option: %c\n", ch);
-  //   //     exit(EXIT_FAILURE);
-  //   // }
-  // }
 
   // Check arguments
-  if (nx % 2 != 0 || ny % 2 != 0) {
-    fprintf(stderr, "ERROR: Lattice dimensions must be even values.\n");
+  if (nx % 3 != 0 || ny % 3 != 0) {
+    fprintf(stderr, "ERROR: Lattice dimensions must be multiple of 3.\n");
     exit(EXIT_FAILURE);
   }
 
@@ -351,11 +327,7 @@ int main(int argc, char **argv) {
   //CHECK_CUDA(cudaMalloc(&extra_lattice, nx * ny/2 * sizeof(*extra_lattice)));
 
   //CHECK_CUDA(cudaMalloc(&total_energy, ()))
-  thrust::device_vector<float> total_energy(nx*ny)[N_EQUILIBRIUM];
-  thrust::device_vector<float> total_energy2(nx*ny)[N_AVERAGE];
   
-  thrust::device_vector<float> sum2(N_AVERAGE);
-  thrust::device_vector<float> sum3(N_AVERAGE);
 
 
   int blocks = (nx * ny/3 + THREADS - 1) / THREADS;
@@ -366,10 +338,21 @@ int main(int argc, char **argv) {
   CHECK_CURAND(curandGenerateUniform(rng, randvals, (nx*ny/3)));
   init_spins<<<blocks, THREADS>>>(lattice_g, randvals, nx, ny/3);
 
+
+  thurst::device_vector<float> spin_energy(nx*ny);
+  CHECK_CUDA(cudaMalloc(&spin_energy, nx*ny, sizeof(*float)));
+
+  initialize_spin_energy(spin_energy, Color::WHITE, lattice_b, lattice_g, nx, ny/3);
+  initialize_spin_energy(spin_energy, Color::BLACK, lattice_g, lattice_w, nx, ny/3);
+  initialize_spin_energy(spin_energy, Color::GREEN, lattice_w, lattice_b, nx, ny/3);
+
+  thrust::device_vector<float> total_energy[N_AVERAGE];
+  
+
   // Warmup iterations
   printf("Starting warmup...\n");
   for (int i = 0; i < nwarmup; i++) {
-    update(total_energy[i], sum, lattice_g, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
+    update(spin_energy, sum, lattice_g, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
   }
   
 
@@ -379,18 +362,14 @@ int main(int argc, char **argv) {
   auto t0 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < niters; i++) {
     update(total_energy2[i], sum, lattice_g, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
-    sum2[i] = total_energy2[i][0];
-    sum3[i] = total_energy2[i][0];
+    total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end());
     if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
-  thrust::reduce(sum2.begin(), sum2.end());
-  sum2[0] /= N_AVERAGE;
-  float variance = 0;
-  thrust::device_vector<float> var(N_AVERAGE);
-  thrust::transform(sum3.begin(), sum3.end(), var.begin(), saxpy_functor(sum2[0]));
+  float sum2 = thrust::reduce(total_energy.begin(), total_energy.end());
+  sum2 /= N_AVERAGE;
+  float variance = thrust::reduce(total_energy.begin(), total_energy.end(), 0, saxpy_functor(sum2));
 
-  thrust::reduce(var.begin(), var.end());
-  var[0] /= N_AVERAGE;
+  variance /= N_AVERAGE;
   float specific_heat = variance / (t * t * nx * ny);
   write_values(filename, t, specific_heat);
 
