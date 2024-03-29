@@ -340,11 +340,11 @@ int main(int argc, char **argv) {
 
   thrust::device_vector<float> spin_energy(nx*ny);
 
-  initialize_spin_energy(spin_energy, Color::WHITE, lattice_b, lattice_g, nx, ny/3);
-  initialize_spin_energy(spin_energy, Color::BLACK, lattice_g, lattice_w, nx, ny/3);
-  initialize_spin_energy(spin_energy, Color::GREEN, lattice_w, lattice_b, nx, ny/3);
+  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy, Color::WHITE, lattice_b, lattice_g, nx, ny/3);
+  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy, Color::BLACK, lattice_g, lattice_w, nx, ny/3);
+  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy, Color::GREEN, lattice_w, lattice_b, nx, ny/3);
 
-  thrust::device_vector<float> total_energy[N_AVERAGE];
+  thrust::device_vector<float> total_energy(N_AVERAGE);
   
 
   // Warmup iterations
