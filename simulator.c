@@ -238,6 +238,10 @@ int runc(float alpha, float t, char* filename, int N) {
     //write_matrix();
     
     fclose(fptr3);
+    FILE *fptr4 = fopen("time_taken.txt", "a");
+    fprintf(fptr4, "%f sec", time_taken);
+    fprintf(fptr4, "\n");
+    close(fptr4);
     
     
     return 0;
