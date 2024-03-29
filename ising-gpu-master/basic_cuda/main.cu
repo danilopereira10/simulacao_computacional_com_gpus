@@ -51,7 +51,7 @@
 
 
 
-enum class Color : unsigned short {BLACK = 0, WHITE = 1, GREEN = 2};
+enum Color {BLACK, WHITE, GREEN};
 
 struct saxpy_functor
 {
