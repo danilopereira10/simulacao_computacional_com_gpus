@@ -119,11 +119,10 @@ __global__ void initialize_spin_energy(thrust::device_vector<float> spin_energy,
                       J0*(two_lattice[i * ny + j2] + three_lattice[i * ny + j3]);   // vizinho 1 horizontal
 
   spin_energy[3*(i*ny + j) +color] = nn_sum;
-  
 }
 
 //template<bool is_black>
-__global__ void update_lattice(thrust::device_vector<float> spin_energy, Color color, signed char* lattice,
+__global__ void update_lattice(float* spin_energy, Color color, signed char* lattice,
                                const signed char* __restrict__ two_lattice,
                                const signed char* __restrict__ three_lattice,
                                const float* __restrict__ randvals,
@@ -225,7 +224,7 @@ void write_values(char* filename, float t, float sh) {
   f.close();
 }
 
-void update(thrust::device_vector<float> total_energy, signed char *lattice_g, signed char *lattice_b, signed char *lattice_w, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny) {
+void update(float* total_energy, signed char *lattice_g, signed char *lattice_b, signed char *lattice_w, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny) {
 
   // Setup CUDA launch configuration
   int blocks = (nx * ny/3 + THREADS - 1) / THREADS;
@@ -339,10 +338,10 @@ int main(int argc, char **argv) {
 
 
   thrust::device_vector<float> spin_energy(nx*ny);
-
-  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy, Color::WHITE, lattice_b, lattice_g, nx, ny/3);
-  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy, Color::BLACK, lattice_g, lattice_w, nx, ny/3);
-  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy, Color::GREEN, lattice_w, lattice_b, nx, ny/3);
+  float *spin_energy_ptr = thrust::raw_pointer_cast(&spin_energy[0]);
+  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::WHITE, lattice_b, lattice_g, nx, ny/3);
+  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::BLACK, lattice_g, lattice_w, nx, ny/3);
+  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::GREEN, lattice_w, lattice_b, nx, ny/3);
 
   thrust::device_vector<float> total_energy(N_AVERAGE);
   
@@ -350,7 +349,7 @@ int main(int argc, char **argv) {
   // Warmup iterations
   printf("Starting warmup...\n");
   for (int i = 0; i < nwarmup; i++) {
-    update(spin_energy, lattice_g, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
+    update(spin_energy_ptr, lattice_g, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
   }
   
 
@@ -359,7 +358,7 @@ int main(int argc, char **argv) {
   printf("Starting trial iterations...\n");
   auto t0 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < niters; i++) {
-    update(spin_energy, lattice_g, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
+    update(spin_energy_ptr, lattice_g, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
     total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end());
     if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
