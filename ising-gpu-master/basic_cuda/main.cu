@@ -116,7 +116,7 @@ __global__ void initialize_spin_energy(thrust::device_vector<float> spin_energy,
   signed char nn_sum;
   nn_sum = J1*(three_lattice[inn * ny + j] + two_lattice[ipp * ny + j]) +  // vizinho 1 vertical
                       J2*(three_lattice[ip2 * ny + j] + two_lattice[in2 * ny + j]) +  // vizinho 2 vertical
-                      J0*(two_lattice[i * ny + j2] + three_lattice[i * ny + jnn]);   // vizinho 1 horizontal
+                      J0*(two_lattice[i * ny + j2] + three_lattice[i * ny + j3]);   // vizinho 1 horizontal
 
   spin_energy[3*(i*ny + j) +color] = nn_sum;
   
@@ -129,7 +129,7 @@ __global__ void update_lattice(thrust::device_vector<float> spin_energy, Color c
                                const float* __restrict__ randvals,
                                const float inv_temp,
                                const long long nx,
-                               const long long ny, thrust::device_vector te, int tei) {
+                               const long long ny) {
   const long long tid = static_cast<long long>(blockDim.x) * blockIdx.x + threadIdx.x;
   const int i = tid / ny;
   const int j = tid % ny;
