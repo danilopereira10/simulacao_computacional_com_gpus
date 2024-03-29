@@ -89,7 +89,7 @@ __global__ void copy_lattice(const signed char* __restrict__ lattice, signed cha
   extra_lattice[i*ny + j] = lattice[i*ny + j];
 }
 
-__global__ void initialize_spin_energy(thrust::device_vector<float> spin_energy, Color color, 
+__global__ void initialize_spin_energy(float* spin_energy, Color color, 
                                const signed char* __restrict__ two_lattice,
                                const signed char* __restrict__ three_lattice,
                                const long long nx,
@@ -241,9 +241,6 @@ void update(float* total_energy, signed char *lattice_g, signed char *lattice_b,
 
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/3));
   update_lattice<<<blocks, THREADS>>>(total_energy, Color::GREEN, lattice_g, lattice_b, lattice_w, randvals, inv_temp, nx, ny/3);
-
-  thrust::reduce(total_energy.begin(), total_energy.end());
-  total_energy[0] /= -2;
 }
 
 static void usage(const char *pname) {
@@ -359,7 +356,7 @@ int main(int argc, char **argv) {
   auto t0 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < niters; i++) {
     update(spin_energy_ptr, lattice_g, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
-    total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end());
+    total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
     if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
   float sum2 = thrust::reduce(total_energy.begin(), total_energy.end());
