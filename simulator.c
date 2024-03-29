@@ -247,6 +247,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
         t += step;
        
     }
+    return 0;
 }
 
 int main(int argc, char* argv[]) {
