@@ -146,9 +146,11 @@ void write_matrix(FILE *fptr, FILE *fptr2, int i, int N, int matrix[][N]) {
     
 }
 
-void write_values(FILE *fptr3, float t, float sh) {
+void write_values(char* filename, float t, float sh) {
+    FILE *fptr3 = fopen(filename, "a");
     fprintf(fptr3, "%f, %f ", t,  sh);
     fprintf(fptr3, "\n");
+    fclose(fptr3);
 }
 
 
@@ -173,7 +175,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
 
         // char[]
         // char[] filename = "valores%d.txt", i;
-        FILE *fptr3 = fopen(filename, "a");
+        
         
         int matrix[L][N];
         float randomMatrix[L][N];
@@ -223,7 +225,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
         }
         variance = variance / (N_AVERAGE);
         float specific_heat = variance / (t*t*L*N);
-        write_values(fptr3, t, specific_heat);
+        write_values(filename, t, specific_heat);
         //TEMP : 1.5f -> specific_heat: 0.233231202
         //TEMP : 2.0f -> specific_heat: 0.868345141
         //TEMP : 2.5f -> specific_heat: 0.987424552
@@ -238,7 +240,6 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
 
         //write_matrix();
         
-        fclose(fptr3);
         FILE *fptr4 = fopen("time_taken.txt", "a");
         fprintf(fptr4, "%f, %f ", t,  specific_heat);
         fprintf(fptr4, "%f sec", time_taken);
