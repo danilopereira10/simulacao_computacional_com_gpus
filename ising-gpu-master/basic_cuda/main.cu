@@ -308,108 +308,107 @@ int main(int argc, char **argv) {
   curandGenerator_t rng;
   CHECK_CURAND(curandCreateGenerator(&rng, CURAND_RNG_PSEUDO_PHILOX4_32_10));
   CHECK_CURAND(curandSetPseudoRandomGeneratorSeed(rng, seed));
-  while (t <= t_end) {
-    // Setup cuRAND generator
-    
-    float *randvals;
-    CHECK_CUDA(cudaMalloc(&randvals, (nx * ny/3) * sizeof(*randvals)));
 
-    // Setup black and white lattice arrays on device
-    signed char *lattice_b, *lattice_w, *lattice_g;
+  // Setup cuRAND generator
+  
+  float *randvals;
+  CHECK_CUDA(cudaMalloc(&randvals, (nx * ny/3) * sizeof(*randvals)));
 
-    CHECK_CUDA(cudaMalloc(&lattice_b, (nx * ny/3) * sizeof(*lattice_b)));
-    CHECK_CUDA(cudaMalloc(&lattice_w, (nx * ny/3) * sizeof(*lattice_w)));
-    CHECK_CUDA(cudaMalloc(&lattice_g, (nx*ny/3) * sizeof(*lattice_g)))
-    //CHECK_CUDA(cudaMalloc(&extra_lattice, nx * ny/2 * sizeof(*extra_lattice)));
+  // Setup black and white lattice arrays on device
+  signed char *lattice_b, *lattice_w, *lattice_g;
 
-    //CHECK_CUDA(cudaMalloc(&total_energy, ()))
-    
+  CHECK_CUDA(cudaMalloc(&lattice_b, (nx * ny/3) * sizeof(*lattice_b)));
+  CHECK_CUDA(cudaMalloc(&lattice_w, (nx * ny/3) * sizeof(*lattice_w)));
+  CHECK_CUDA(cudaMalloc(&lattice_g, (nx*ny/3) * sizeof(*lattice_g)))
+  //CHECK_CUDA(cudaMalloc(&extra_lattice, nx * ny/2 * sizeof(*extra_lattice)));
 
-
-    int blocks = (nx * ny/3 + THREADS - 1) / THREADS;
-    CHECK_CURAND(curandGenerateUniform(rng, randvals, (nx*ny/3)));
-    init_spins<<<blocks, THREADS>>>(lattice_b, randvals, nx, ny/3);
-    CHECK_CURAND(curandGenerateUniform(rng, randvals, (nx*ny/3)));
-    init_spins<<<blocks, THREADS>>>(lattice_w, randvals, nx, ny/3);
-    CHECK_CURAND(curandGenerateUniform(rng, randvals, (nx*ny/3)));
-    init_spins<<<blocks, THREADS>>>(lattice_g, randvals, nx, ny/3);
+  //CHECK_CUDA(cudaMalloc(&total_energy, ()))
+  
 
 
-    thrust::device_vector<float> spin_energy(nx*ny);
-    float *spin_energy_ptr = thrust::raw_pointer_cast(&spin_energy[0]);
-    initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::WHITE, lattice_b, lattice_g, nx, ny/3);
-    initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::BLACK, lattice_g, lattice_w, nx, ny/3);
-    initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::GREEN, lattice_w, lattice_b, nx, ny/3);
+  int blocks = (nx * ny/3 + THREADS - 1) / THREADS;
+  CHECK_CURAND(curandGenerateUniform(rng, randvals, (nx*ny/3)));
+  init_spins<<<blocks, THREADS>>>(lattice_b, randvals, nx, ny/3);
+  CHECK_CURAND(curandGenerateUniform(rng, randvals, (nx*ny/3)));
+  init_spins<<<blocks, THREADS>>>(lattice_w, randvals, nx, ny/3);
+  CHECK_CURAND(curandGenerateUniform(rng, randvals, (nx*ny/3)));
+  init_spins<<<blocks, THREADS>>>(lattice_g, randvals, nx, ny/3);
 
-    thrust::device_vector<float> total_energy(N_AVERAGE);
-    
 
-    // Warmup iterations
-    printf("Starting warmup...\n");
-    for (int i = 0; i < nwarmup; i++) {
-      update(spin_energy_ptr, lattice_g, lattice_b, lattice_w, randvals, rng, t, nx, ny);
-    }
-    
+  thrust::device_vector<float> spin_energy(nx*ny);
+  float *spin_energy_ptr = thrust::raw_pointer_cast(&spin_energy[0]);
+  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::WHITE, lattice_b, lattice_g, nx, ny/3);
+  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::BLACK, lattice_g, lattice_w, nx, ny/3);
+  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::GREEN, lattice_w, lattice_b, nx, ny/3);
 
-    CHECK_CUDA(cudaDeviceSynchronize());
+  thrust::device_vector<float> total_energy(N_AVERAGE);
+  
 
-    printf("Starting trial iterations...\n");
-    auto t0 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < niters; i++) {
-      update(spin_energy_ptr, lattice_g, lattice_b, lattice_w, randvals, rng, t, nx, ny);
-      total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
-      if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
-    }
-    float sum2 = thrust::reduce(total_energy.begin(), total_energy.end());
-    sum2 /= N_AVERAGE;
-    float variance = thrust::reduce(total_energy.begin(), total_energy.end(), 0, saxpy_functor(sum2));
-
-    variance /= N_AVERAGE;
-    float specific_heat = variance / (t * t * nx * ny);
-    write_values(fileName, t, specific_heat);
-
-    CHECK_CUDA(cudaDeviceSynchronize());
-    auto t1 = std::chrono::high_resolution_clock::now();
-
-    double duration = (double) std::chrono::duration_cast<std::chrono::microseconds>(t1-t0).count();
-    printf("REPORT:\n");
-    printf("\tnGPUs: %d\n", 1);
-    printf("\ttemperature: %f * %f\n", alpha, TCRIT);
-    printf("\tseed: %llu\n", seed);
-    printf("\twarmup iterations: %d\n", nwarmup);
-    printf("\ttrial iterations: %d\n", niters);
-    printf("\tlattice dimensions: %lld x %lld\n", nx, ny);
-    printf("\telapsed time: %f sec\n", duration * 1e-6);
-    printf("\tupdates per ns: %f\n", (double) (nx * ny) * niters / duration * 1e-3);
-
-    // Reduce
-    double* devsum;
-    int nchunks = (nx * ny/2 + CUB_CHUNK_SIZE - 1)/ CUB_CHUNK_SIZE;
-    CHECK_CUDA(cudaMalloc(&devsum, 2 * nchunks * sizeof(*devsum)));
-    size_t cub_workspace_bytes = 0;
-    void* workspace = NULL;
-    CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, lattice_b, devsum, CUB_CHUNK_SIZE));
-    CHECK_CUDA(cudaMalloc(&workspace, cub_workspace_bytes));
-    for (int i = 0; i < nchunks; i++) {
-      CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, &lattice_b[i*CUB_CHUNK_SIZE], devsum + 2*i,
-                            std::min((long long) CUB_CHUNK_SIZE, nx * ny/2 - i * CUB_CHUNK_SIZE)));
-      CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, &lattice_w[i*CUB_CHUNK_SIZE], devsum + 2*i + 1,
-                            std::min((long long) CUB_CHUNK_SIZE, nx * ny/2 - i * CUB_CHUNK_SIZE)));
-    }
-
-    double* hostsum;
-    hostsum = (double*)malloc(2 * nchunks * sizeof(*hostsum));
-    CHECK_CUDA(cudaMemcpy(hostsum, devsum, 2 * nchunks * sizeof(*devsum), cudaMemcpyDeviceToHost));
-    double fullsum = 0.0;
-    for (int i = 0; i < 2 * nchunks; i++) {
-      fullsum += hostsum[i];
-    }
-    std::cout << "\taverage magnetism (absolute): " << abs(fullsum / (nx * ny)) << std::endl;
-
-    if (write) write_lattice(lattice_g, lattice_b, lattice_w, "final.txt", nx, ny);
-    write_lattice(lattice_g, lattice_b, lattice_w, "final.txt", nx, ny);
-    t += step;
+  // Warmup iterations
+  printf("Starting warmup...\n");
+  for (int i = 0; i < nwarmup; i++) {
+    update(spin_energy_ptr, lattice_g, lattice_b, lattice_w, randvals, rng, t, nx, ny);
   }
+  
+
+  CHECK_CUDA(cudaDeviceSynchronize());
+
+  printf("Starting trial iterations...\n");
+  auto t0 = std::chrono::high_resolution_clock::now();
+  for (int i = 0; i < niters; i++) {
+    update(spin_energy_ptr, lattice_g, lattice_b, lattice_w, randvals, rng, t, nx, ny);
+    total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
+    if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
+  }
+  float sum2 = thrust::reduce(total_energy.begin(), total_energy.end());
+  sum2 /= N_AVERAGE;
+  float variance = thrust::reduce(total_energy.begin(), total_energy.end(), 0, saxpy_functor(sum2));
+
+  variance /= N_AVERAGE;
+  float specific_heat = variance / (t * t * nx * ny);
+  write_values(fileName, t, specific_heat);
+
+  CHECK_CUDA(cudaDeviceSynchronize());
+  auto t1 = std::chrono::high_resolution_clock::now();
+
+  double duration = (double) std::chrono::duration_cast<std::chrono::microseconds>(t1-t0).count();
+  printf("REPORT:\n");
+  printf("\tnGPUs: %d\n", 1);
+  printf("\ttemperature: %f * %f\n", alpha, TCRIT);
+  printf("\tseed: %llu\n", seed);
+  printf("\twarmup iterations: %d\n", nwarmup);
+  printf("\ttrial iterations: %d\n", niters);
+  printf("\tlattice dimensions: %lld x %lld\n", nx, ny);
+  printf("\telapsed time: %f sec\n", duration * 1e-6);
+  printf("\tupdates per ns: %f\n", (double) (nx * ny) * niters / duration * 1e-3);
+
+  // Reduce
+  double* devsum;
+  int nchunks = (nx * ny/2 + CUB_CHUNK_SIZE - 1)/ CUB_CHUNK_SIZE;
+  CHECK_CUDA(cudaMalloc(&devsum, 2 * nchunks * sizeof(*devsum)));
+  size_t cub_workspace_bytes = 0;
+  void* workspace = NULL;
+  CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, lattice_b, devsum, CUB_CHUNK_SIZE));
+  CHECK_CUDA(cudaMalloc(&workspace, cub_workspace_bytes));
+  for (int i = 0; i < nchunks; i++) {
+    CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, &lattice_b[i*CUB_CHUNK_SIZE], devsum + 2*i,
+                          std::min((long long) CUB_CHUNK_SIZE, nx * ny/2 - i * CUB_CHUNK_SIZE)));
+    CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, &lattice_w[i*CUB_CHUNK_SIZE], devsum + 2*i + 1,
+                          std::min((long long) CUB_CHUNK_SIZE, nx * ny/2 - i * CUB_CHUNK_SIZE)));
+  }
+
+  double* hostsum;
+  hostsum = (double*)malloc(2 * nchunks * sizeof(*hostsum));
+  CHECK_CUDA(cudaMemcpy(hostsum, devsum, 2 * nchunks * sizeof(*devsum), cudaMemcpyDeviceToHost));
+  double fullsum = 0.0;
+  for (int i = 0; i < 2 * nchunks; i++) {
+    fullsum += hostsum[i];
+  }
+  std::cout << "\taverage magnetism (absolute): " << abs(fullsum / (nx * ny)) << std::endl;
+
+  if (write) write_lattice(lattice_g, lattice_b, lattice_w, "final.txt", nx, ny);
+  write_lattice(lattice_g, lattice_b, lattice_w, "final.txt", nx, ny);
+  
 
   return 0;
 }
