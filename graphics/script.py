@@ -11,9 +11,11 @@ t2 = [2.5, 2.7, 3.0,3.0]
 j = 0
 for i in range (len(alpha)):
     t = t1[i]
-    
+    t_end = t + 0.02
+    step = 0.002
     while(t <= t2[i]):
-        l = ["./simulator", str(alpha[i]), str(t), str(alpha[i])+".txt", "10"]
+        l = ["./simulator", str(alpha[i]), str(t), str(t_end), str(step), str(alpha[i])+".txt", "10"]
         subprocess.Popen(l, stdout=subprocess.PIPE)
-        t += 0.002
+        t += 0.02
+        t_end += 0.02
         j +=1

@@ -154,103 +154,107 @@ void write_values(FILE *fptr3, float t, float sh) {
 
 
 
-int runc(float alpha, float t, char* filename, int N) {
-    clock_t start, end;
+int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
+    while (t <= t_end) {
+        clock_t start, end;
+        
     
- 
-    /* Recording the starting clock tick.*/
-    start = clock(); 
- 
-   
+        /* Recording the starting clock tick.*/
+        start = clock(); 
+    
+    
 
-    srand((unsigned) time(NULL));
-    //int random = rand();
-    float J0 = 1.0;
+        srand((unsigned) time(NULL));
+        //int random = rand();
+        float J0 = 1.0;
 
-    float J1 = (1-alpha)* J0;
-    float J2 = -alpha*J0;
+        float J1 = (1-alpha)* J0;
+        float J2 = -alpha*J0;
 
-    // char[]
-    // char[] filename = "valores%d.txt", i;
-    FILE *fptr3 = fopen(filename, "a");
-    
-    int matrix[L][N];
-    float randomMatrix[L][N];
-    
-    initialize_matrix(N, matrix, randomMatrix);
-    //initialize_ordered();
-    initialize_total_energy(0, J0, J1, J2, N, matrix);
-    //printf("%f", total_energy);
-    //FILE *fptr, *fptr2, *fptr3;
-    // fptr = fopen("arquivo_eq.txt", "w");
-    // fptr2 = fopen("energia_eq.txt", "w");
-    
-    for (int i = 0; i < N_EQUILIBRIUM+N_AVERAGE; i++) {
-        //write_matrix(fptr, fptr2, i); 
-        flip_spins(BLACK, J0, J1, J2, t, N, matrix, randomMatrix);
-        flip_spins(WHITE, J0, J1, J2, t, N, matrix, randomMatrix);
-        flip_spins(GREEN, J0, J1, J2, t, N, matrix, randomMatrix);
-        initialize_total_energy(i+1, J0, J1, J2, N, matrix);
-        reinitialize_random_matrix(N, randomMatrix);
+        // char[]
+        // char[] filename = "valores%d.txt", i;
+        FILE *fptr3 = fopen(filename, "a");
+        
+        int matrix[L][N];
+        float randomMatrix[L][N];
+        
+        initialize_matrix(N, matrix, randomMatrix);
+        //initialize_ordered();
+        initialize_total_energy(0, J0, J1, J2, N, matrix);
+        //printf("%f", total_energy);
+        //FILE *fptr, *fptr2, *fptr3;
+        // fptr = fopen("arquivo_eq.txt", "w");
+        // fptr2 = fopen("energia_eq.txt", "w");
+        
+        for (int i = 0; i < N_EQUILIBRIUM+N_AVERAGE; i++) {
+            //write_matrix(fptr, fptr2, i); 
+            flip_spins(BLACK, J0, J1, J2, t, N, matrix, randomMatrix);
+            flip_spins(WHITE, J0, J1, J2, t, N, matrix, randomMatrix);
+            flip_spins(GREEN, J0, J1, J2, t, N, matrix, randomMatrix);
+            initialize_total_energy(i+1, J0, J1, J2, N, matrix);
+            reinitialize_random_matrix(N, randomMatrix);
+        }
+        // fclose(fptr);
+        // fclose(fptr2);
+        // fclose(fptr3);
+
+        // fptr = fopen("arquivo_av.txt", "w");
+        // fptr2 = fopen("energia_av.txt", "w");
+        // for (int i = 0; i < N_AVERAGE; i++) {
+        //     //write_matrix(fptr, fptr2, N_EQUILIBRIUM+i);
+        //     flip_spins(BLACK, J0, J1, J2, t, N, matrix, randomMatrix);
+        //     flip_spins(WHITE, J0, J1, J2, t, N, matrix, randomMatrix);
+        //     flip_spins(GREEN, J0, J1, J2, t, N, matrix, randomMatrix);
+        //     initialize_total_energy(1+N_EQUILIBRIUM+i, J0, J1, J2, N, matrix);
+        //     reinitialize_random_matrix(N, randomMatrix);
+        // }
+        // fclose(fptr);
+        // fclose(fptr2);
+        //fclose(fptr3);
+
+        float av_energy = 0;
+        for (int i = 1+N_EQUILIBRIUM; i <  1+N_EQUILIBRIUM+N_AVERAGE; i++) {
+            av_energy += total_energy[i];
+        }
+        av_energy = av_energy / (N_AVERAGE);
+        float variance = 0;
+        for (int i = 1+N_EQUILIBRIUM; i <  1+N_EQUILIBRIUM+N_AVERAGE; i++) {
+            variance += (total_energy[i]-av_energy)*(total_energy[i]-av_energy);
+        }
+        variance = variance / (N_AVERAGE);
+        float specific_heat = variance / (t*t*L*N);
+        write_values(fptr3, t, specific_heat);
+        //TEMP : 1.5f -> specific_heat: 0.233231202
+        //TEMP : 2.0f -> specific_heat: 0.868345141
+        //TEMP : 2.5f -> specific_heat: 0.987424552
+        //TEMP : 3.0f -> specific_heat: 0.42233637
+        //printf("%f \n", specific_heat);
+
+        end = clock();
+
+        double time_taken = ((end - start)+0.0) / (CLOCKS_PER_SEC); 
+        printf("The program took %f seconds to execute", time_taken);
+        //cout << fixed << time_taken << setprecision(5) << " seconds \n";
+
+        //write_matrix();
+        
+        fclose(fptr3);
+        FILE *fptr4 = fopen("time_taken.txt", "a");
+        fprintf(fptr4, "%f sec", time_taken);
+        fprintf(fptr4, "\n");
+        fclose(fptr4);
+        
+        t += step;
+       
     }
-    // fclose(fptr);
-    // fclose(fptr2);
-    // fclose(fptr3);
-
-    // fptr = fopen("arquivo_av.txt", "w");
-    // fptr2 = fopen("energia_av.txt", "w");
-    // for (int i = 0; i < N_AVERAGE; i++) {
-    //     //write_matrix(fptr, fptr2, N_EQUILIBRIUM+i);
-    //     flip_spins(BLACK, J0, J1, J2, t, N, matrix, randomMatrix);
-    //     flip_spins(WHITE, J0, J1, J2, t, N, matrix, randomMatrix);
-    //     flip_spins(GREEN, J0, J1, J2, t, N, matrix, randomMatrix);
-    //     initialize_total_energy(1+N_EQUILIBRIUM+i, J0, J1, J2, N, matrix);
-    //     reinitialize_random_matrix(N, randomMatrix);
-    // }
-    // fclose(fptr);
-    // fclose(fptr2);
-    //fclose(fptr3);
-
-    float av_energy = 0;
-    for (int i = 1+N_EQUILIBRIUM; i <  1+N_EQUILIBRIUM+N_AVERAGE; i++) {
-        av_energy += total_energy[i];
-    }
-    av_energy = av_energy / (N_AVERAGE);
-    float variance = 0;
-    for (int i = 1+N_EQUILIBRIUM; i <  1+N_EQUILIBRIUM+N_AVERAGE; i++) {
-        variance += (total_energy[i]-av_energy)*(total_energy[i]-av_energy);
-    }
-    variance = variance / (N_AVERAGE);
-    float specific_heat = variance / (t*t*L*N);
-    write_values(fptr3, t, specific_heat);
-    //TEMP : 1.5f -> specific_heat: 0.233231202
-    //TEMP : 2.0f -> specific_heat: 0.868345141
-    //TEMP : 2.5f -> specific_heat: 0.987424552
-    //TEMP : 3.0f -> specific_heat: 0.42233637
-    //printf("%f \n", specific_heat);
-
-    end = clock();
-
-    double time_taken = ((end - start)+0.0) / (CLOCKS_PER_SEC); 
-    printf("The program took %f seconds to execute", time_taken);
-    //cout << fixed << time_taken << setprecision(5) << " seconds \n";
-
-    //write_matrix();
-    
-    fclose(fptr3);
-    FILE *fptr4 = fopen("time_taken.txt", "a");
-    fprintf(fptr4, "%f sec", time_taken);
-    fprintf(fptr4, "\n");
-    fclose(fptr4);
-    
-    
-    return 0;
 }
 
 int main(int argc, char* argv[]) {
     float alpha = atof(argv[1]);
     float t = atof(argv[2]);
-    char* fileName = argv[3];
-    int N = atoi(argv[4]);
-    runc(alpha, t, fileName, N);
+    float t_end = atof(argv[3]);
+    float step = atof(argv[4]);
+    char* fileName = argv[5];
+    int N = atoi(argv[6]);
+    runc(alpha, t, t_end, step, fileName, N);
 }
