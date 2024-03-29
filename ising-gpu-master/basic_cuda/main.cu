@@ -305,11 +305,12 @@ int main(int argc, char **argv) {
   //   fprintf(stderr, "ERROR: Lattice dimensions must be multiple of 3.\n");
   //   exit(EXIT_FAILURE);
   // }
+  curandGenerator_t rng;
+  CHECK_CURAND(curandCreateGenerator(&rng, CURAND_RNG_PSEUDO_PHILOX4_32_10));
+  CHECK_CURAND(curandSetPseudoRandomGeneratorSeed(rng, seed));
   while (t <= t_end) {
     // Setup cuRAND generator
-    curandGenerator_t rng;
-    CHECK_CURAND(curandCreateGenerator(&rng, CURAND_RNG_PSEUDO_PHILOX4_32_10));
-    CHECK_CURAND(curandSetPseudoRandomGeneratorSeed(rng, seed));
+    
     float *randvals;
     CHECK_CUDA(cudaMalloc(&randvals, (nx * ny/3) * sizeof(*randvals)));
 
