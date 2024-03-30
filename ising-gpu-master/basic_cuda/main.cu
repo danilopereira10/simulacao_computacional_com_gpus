@@ -91,6 +91,11 @@ __global__ void copy_lattice(const signed char* __restrict__ lattice, signed cha
   extra_lattice[i*ny + j] = lattice[i*ny + j];
 }
 
+
+__host__ __device__ inline float sum(float x) {
+  return x;
+}
+
 __global__ void initialize_spin_energy(float* spin_energy, Color color, 
                                const signed char* __restrict__ lattice,
                                const long long nx,
@@ -119,7 +124,7 @@ __global__ void initialize_spin_energy(float* spin_energy, Color color,
                       J2*(lattice[ip2 * ny + j] + lattice[in2 * ny + j]) +  // vizinho 2 vertical
                       J0*(lattice[i * ny + jpp] + lattice[i * ny + jnn]);   // vizinho 1 horizontal
 
-  spin_energy[(i*ny + j)] = nn_sum;
+  spin_energy[(i*ny + j)] = sum(nn_sum);
 }
 
 //template<bool is_black>
