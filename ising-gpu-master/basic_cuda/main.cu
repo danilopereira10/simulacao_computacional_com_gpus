@@ -401,7 +401,7 @@ int main(int argc, char **argv) {
   var /= niters;
   float specific_heat = var /(t*t*nx*ny);
   
-  write_values(fileName, t, specific_heat);
+  write_values(fileName, t, specific_heat*1000);
 
   CHECK_CUDA(cudaDeviceSynchronize());
   auto t1 = std::chrono::high_resolution_clock::now();
