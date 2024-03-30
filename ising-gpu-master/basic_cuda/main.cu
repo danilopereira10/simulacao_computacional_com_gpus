@@ -41,12 +41,9 @@
 #define TCRIT 2.26918531421f
 #define THREADS  128
 
-#define L 240
-#define C 12
 #define J0 1.0f
 #define J1 0.0f
 #define J2 -1.0f
-#define N_EQUILIBRIUM 20000
 #define co std::cout <<
 #define en << std::endl;
 
@@ -299,13 +296,13 @@ int main(int argc, char **argv) {
   float alpha = 0.376f;
   float t = 0.6f;
   char* fileName = "0.376_fim.txt";
-  long long ny = 10;
-  int niters = 100000;
+  long long ny = 5120;
+  int niters = 1000;
   // Defaults
-  long long nx = 240;
+  long long nx = 5120;
   //long long ny = 12;
   //float alpha = 0.1f;
-  int nwarmup = N_EQUILIBRIUM;
+  int nwarmup = 100;
   bool write = false;
   unsigned long long seed = 1234ULL;
 
