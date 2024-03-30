@@ -260,7 +260,7 @@ int main(int argc, char* argv[]) {
     float t = 2.26918531421f;
     float t_end = t + 0.1;
     float step = 1;
-    char fileName= "haha.txt";
+    char* fileName= "haha.txt";
     int N =5120;
     // float t_end = atof(argv[3]);
     // float step = atof(argv[4]);
