@@ -351,10 +351,13 @@ int main(int argc, char **argv) {
   auto t0 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < niters; i++) {
     update(spin_energy_ptr, lattice, randvals, rng, t, nx, ny);
-    total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
-    if (total_energy[i] != 0) {
-      co total_energy[i] en;
+    double tt = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
+    if (tt != 0) {
+      co tt en
     }
+    // if (total_energy[i] != 0) {
+    //   co total_energy[i] en;
+    // }
     // for (int i = 0; i < nx; i++) {
     //   for (int j = 0; j < ny; j++) {
     //     if (spin_energy[i*ny+j] != 0) {
