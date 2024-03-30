@@ -46,6 +46,8 @@
 #define J1 0.0f
 #define J2 -1.0f
 #define N_EQUILIBRIUM 20000
+#define CO std::cout <<
+#define EN << std::endl;
 
 
 
@@ -349,7 +351,7 @@ int main(int argc, char **argv) {
   for (int i = 0; i < niters; i++) {
     update(spin_energy_ptr, lattice, randvals, rng, t, nx, ny);
     total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
-    cout << total_energy[i] << endl;
+    std::cout << total_energy[i] << std::endl;
     if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
   float sum2 = thrust::reduce(total_energy.begin(), total_energy.end());
