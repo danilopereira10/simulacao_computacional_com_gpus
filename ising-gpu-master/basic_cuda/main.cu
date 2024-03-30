@@ -46,8 +46,8 @@
 #define J1 0.0f
 #define J2 -1.0f
 #define N_EQUILIBRIUM 20000
-#define CO std::cout <<
-#define EN << std::endl;
+#define co std::cout <<
+#define en << std::endl;
 
 
 
@@ -119,9 +119,6 @@ __global__ void initialize_spin_energy(float* spin_energy, Color color,
                       J0*(lattice[i * ny + jpp] + lattice[i * ny + jnn]);   // vizinho 1 horizontal
 
   spin_energy[(i*ny + j)] = nn_sum;
-  if (spin_energy[i*ny+j] != 0) {
-    CO spin_energy[i*ny+j] EN;
-  }
 }
 
 //template<bool is_black>
@@ -354,6 +351,9 @@ int main(int argc, char **argv) {
   for (int i = 0; i < niters; i++) {
     update(spin_energy_ptr, lattice, randvals, rng, t, nx, ny);
     total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
+    if (total_energy[i] != 0) {
+      co total_energy[i] << " " << i en;
+    }
     //std::cout << total_energy[i] << std::endl;
     if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
