@@ -112,9 +112,9 @@ __global__ void initialize_spin_energy(float* spin_energy, Color color,
   // Compute sum of nearest neighbor spins
 
   signed char nn_sum;
-  nn_sum = J1*(three_lattice[inn * ny + j] + two_lattice[ipp * ny + j]) +  // vizinho 1 vertical
-                      J2*(three_lattice[ip2 * ny + j] + two_lattice[in2 * ny + j]) +  // vizinho 2 vertical
-                      J0*(two_lattice[i * ny + jpp] + three_lattice[i * ny + jnn]);   // vizinho 1 horizontal
+  nn_sum = J1*(lattice[inn * ny + j] + lattice[ipp * ny + j]) +  // vizinho 1 vertical
+                      J2*(lattice[ip2 * ny + j] + lattice[in2 * ny + j]) +  // vizinho 2 vertical
+                      J0*(lattice[i * ny + jpp] + lattice[i * ny + jnn]);   // vizinho 1 horizontal
 
   spin_energy[(i*ny + j)] = nn_sum;
 }
@@ -346,9 +346,9 @@ int main(int argc, char **argv) {
 
   thrust::device_vector<float> spin_energy(nx*ny);
   float *spin_energy_ptr = thrust::raw_pointer_cast(&spin_energy[0]);
-  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::WHITE, lattice_b, lattice_g, nx, ny);
-  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::BLACK, lattice_g, lattice_w, nx, ny);
-  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::GREEN, lattice_w, lattice_b, nx, ny);
+  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::WHITE, lattice, nx, ny);
+  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::BLACK, lattice, nx, ny);
+  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::GREEN, lattice, nx, ny);
 
   thrust::device_vector<float> total_energy(niters);
   
