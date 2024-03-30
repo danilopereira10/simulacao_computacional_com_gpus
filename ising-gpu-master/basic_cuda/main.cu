@@ -396,7 +396,7 @@ int main(int argc, char **argv) {
   sum2 /= niters;
   double var = 0;
   for (int i = 0; i < niters; i++) {
-    var += (total_energy[i]-sum2)**2;
+    var += (total_energy[i]-sum2)*(total_energy[i]-sum2);
   }
   var /= niters;
   float specific_heat = var /(t*t*nx*ny);
