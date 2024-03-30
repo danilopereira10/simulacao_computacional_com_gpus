@@ -353,8 +353,8 @@ int main(int argc, char **argv) {
     total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
     for (int i = 0; i < nx; i++) {
       for (int j = 0; j < ny; j++) {
-        if (spin_energy[i][j] != 0) {
-          co spin_energy[i][j] << " " << i << " " << j en;
+        if (spin_energy[i*ny+j] != 0) {
+          co spin_energy[i*ny+j] << " " << i << " " << j en;
         }
       }
     }
