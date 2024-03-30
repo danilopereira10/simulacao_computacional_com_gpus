@@ -281,11 +281,11 @@ static void usage(const char *pname) {
   exit(EXIT_SUCCESS);
 }
 
-void saxpy_fast(float A, thrust::device_vector<float>& X, thrust::device_vector<float>& Y)
-{
-    // Y <- A * X + Y
-    thrust::transform(X.begin(), X.end(), Y.begin(), Y.begin(), saxpy_functor(A));
-}
+// void saxpy_fast(float A, thrust::device_vector<float>& X, thrust::device_vector<float>& Y)
+// {
+//     // Y <- A * X + Y
+//     thrust::transform(X.begin(), X.end(), Y.begin(), Y.begin(), saxpy_functor(A));
+// }
 
 int main(int argc, char **argv) {
 
