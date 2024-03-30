@@ -36,6 +36,7 @@
 #include "cudamacro.h"
 #include "cuda_runtime.h"
 #include "thrust/device_vector.h"
+#include <thrust/host_vector.h>
 
 #define TCRIT 2.26918531421f
 #define THREADS  128
