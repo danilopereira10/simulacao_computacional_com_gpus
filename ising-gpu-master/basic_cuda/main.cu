@@ -229,15 +229,15 @@ void update(float* total_energy, signed char *lattice, float* randvals, curandGe
 
   // Update black
   //copy_lattice<<<blocks, THREADS>>>(lattice_b, extra_lattice, nx, ny/2);
-  CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/3));
+  CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny));
   update_lattice<<<blocks, THREADS>>>(total_energy, Color::BLACK, lattice, randvals, t, nx, ny);
 
   // Update white
   //copy_lattice<<<blocks, THREADS>>>(lattice_w, extra_lattice, nx, ny/2);
-  CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/3));
+  CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny));
   update_lattice<<<blocks, THREADS>>>(total_energy, Color::WHITE, lattice,  randvals, t, nx, ny);
 
-  CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/3));
+  CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny));
   update_lattice<<<blocks, THREADS>>>(total_energy, Color::GREEN, lattice, randvals, t, nx, ny);
 }
 
@@ -293,7 +293,7 @@ int main(int argc, char **argv) {
   float t = 0.6f;
   char* fileName = "0.376_fim.txt";
   long long ny = 12;
-  int niters = 1000000;
+  int niters = 100000;
   // Defaults
   long long nx = 240;
   //long long ny = 12;
