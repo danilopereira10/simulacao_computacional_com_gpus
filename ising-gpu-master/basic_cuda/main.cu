@@ -45,8 +45,8 @@
 #define J0 1.0f
 #define J1 0.0f
 #define J2 -1.0f
-#define N_EQUILIBRIUM 20000
-#define N_AVERAGE 1000000
+#define N_EQUILIBRIUM 100
+#define N_AVERAGE 1000
 
 
 
@@ -284,13 +284,18 @@ void saxpy_fast(float A, thrust::device_vector<float>& X, thrust::device_vector<
 
 int main(int argc, char **argv) {
 
-  float alpha = atof(argv[1]);
-  float t = atof(argv[2]);
-  float t_end = atof(argv[3]);
-  float step = atof(argv[4]);
-  char* fileName = argv[5];
-  long long ny = atoll(argv[6]);
-  int niters = atoi(argv[7]);
+  // float alpha = atof(argv[1]);
+  // float t = atof(argv[2]);
+  // float t_end = atof(argv[3]);
+  // float step = atof(argv[4]);
+  // char* fileName = argv[5];
+  // long long ny = atoll(argv[6]);
+  // int niters = atoi(argv[7]);
+  float alpha = 0.376f;
+  float t = 0.6f;
+  char* fileName = "0.376_fim.txt";
+  long long ny = 12;
+  int niters = 1000;
   // Defaults
   long long nx = 240;
   //long long ny = 12;
