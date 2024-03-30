@@ -295,7 +295,7 @@ int main(int argc, char **argv) {
   float t = 0.6f;
   char* fileName = "0.376_fim.txt";
   long long ny = 12;
-  int niters = 1000;
+  int niters = 10000;
   // Defaults
   long long nx = 240;
   //long long ny = 12;
