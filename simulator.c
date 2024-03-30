@@ -6,7 +6,7 @@
 #include <string.h>
 
 
-#define L 240
+#define L 5120
 // #define J0 1.0f
 // #define J1 0.0f
 // #define J2 -1.0f // Valor de alpha = 1, com J_0=1 (paper Selke 1981)
@@ -157,7 +157,8 @@ void write_values(char* filename, float t, float sh) {
 
 
 int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
-    while (t <= t_end) {
+    srand((unsigned) time(NULL));
+    while (t < t_end) {
         clock_t start, end;
         
     
@@ -166,7 +167,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
     
     
 
-        srand((unsigned) time(NULL));
+        
         //int random = rand();
         float J0 = 1.0;
 
