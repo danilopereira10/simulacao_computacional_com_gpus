@@ -45,7 +45,7 @@
 #define J0 1.0f
 #define J1 0.0f
 #define J2 -1.0f
-#define N_EQUILIBRIUM 100
+#define N_EQUILIBRIUM 20000
 
 
 
@@ -292,7 +292,7 @@ int main(int argc, char **argv) {
   float alpha = 0.376f;
   float t = 0.6f;
   char* fileName = "0.376_fim.txt";
-  long long ny = 12;
+  long long ny = 10;
   int niters = 100000;
   // Defaults
   long long nx = 240;
@@ -303,11 +303,7 @@ int main(int argc, char **argv) {
   unsigned long long seed = 1234ULL;
 
 
-  // Check arguments
-  // if (nx % 3 != 0 || ny % 3 != 0) {
-  //   fprintf(stderr, "ERROR: Lattice dimensions must be multiple of 3.\n");
-  //   exit(EXIT_FAILURE);
-  // }
+
   curandGenerator_t rng;
   CHECK_CURAND(curandCreateGenerator(&rng, CURAND_RNG_PSEUDO_PHILOX4_32_10));
   CHECK_CURAND(curandSetPseudoRandomGeneratorSeed(rng, seed));
@@ -317,17 +313,10 @@ int main(int argc, char **argv) {
   float *randvals;
   CHECK_CUDA(cudaMalloc(&randvals, (nx * ny) * sizeof(*randvals)));
 
-  // Setup black and white lattice arrays on device
-  // signed char *lattice_b, *lattice_w, *lattice_g;
 
   signed char *lattice;
   CHECK_CUDA(cudaMalloc(&lattice, (nx * ny) * sizeof(*lattice)));
-  // CHECK_CUDA(cudaMalloc(&lattice_b, (nx * ny/3) * sizeof(*lattice_b)));
-  // CHECK_CUDA(cudaMalloc(&lattice_w, (nx * ny/3) * sizeof(*lattice_w)));
-  // CHECK_CUDA(cudaMalloc(&lattice_g, (nx*ny/3) * sizeof(*lattice_g)))
-  //CHECK_CUDA(cudaMalloc(&extra_lattice, nx * ny/2 * sizeof(*extra_lattice)));
 
-  //CHECK_CUDA(cudaMalloc(&total_energy, ()))
   
 
 
@@ -335,13 +324,6 @@ int main(int argc, char **argv) {
   CHECK_CURAND(curandGenerateUniform(rng, randvals, (nx*ny)));
   init_spins<<<blocks, THREADS>>>(lattice, randvals, nx, ny);
 
-  // int blocks = (nx * ny/3 + THREADS - 1) / THREADS;
-  // // CHECK_CURAND(curandGenerateUniform(rng, randvals, (nx*ny/3)));
-  // init_spins<<<blocks, THREADS>>>(lattice_b, randvals, nx, ny/3);
-  // CHECK_CURAND(curandGenerateUniform(rng, randvals, (nx*ny/3)));
-  // init_spins<<<blocks, THREADS>>>(lattice_w, randvals, nx, ny/3);
-  // CHECK_CURAND(curandGenerateUniform(rng, randvals, (nx*ny/3)));
-  // init_spins<<<blocks, THREADS>>>(lattice_g, randvals, nx, ny/3);
 
 
   thrust::device_vector<float> spin_energy(nx*ny);
@@ -367,6 +349,7 @@ int main(int argc, char **argv) {
   for (int i = 0; i < niters; i++) {
     update(spin_energy_ptr, lattice, randvals, rng, t, nx, ny);
     total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
+    cout << total_energy[i] << endl;
     if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
   float sum2 = thrust::reduce(total_energy.begin(), total_energy.end());
@@ -391,30 +374,6 @@ int main(int argc, char **argv) {
   printf("\telapsed time: %f sec\n", duration * 1e-6);
   printf("\tupdates per ns: %f\n", (double) (nx * ny) * niters / duration * 1e-3);
 
-  // Reduce
-  // double* devsum;
-  // int nchunks = (nx * ny + CUB_CHUNK_SIZE - 1)/ CUB_CHUNK_SIZE;
-  // CHECK_CUDA(cudaMalloc(&devsum, nchunks * sizeof(*devsum)));
-  // size_t cub_workspace_bytes = 0;
-  // void* workspace = NULL;
-  // CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, lattice, devsum, CUB_CHUNK_SIZE));
-  // CHECK_CUDA(cudaMalloc(&workspace, cub_workspace_bytes));
-  // for (int i = 0; i < nchunks; i++) {
-  //   CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, &lattice[i*CUB_CHUNK_SIZE], devsum + i,
-  //                         std::min((long long) CUB_CHUNK_SIZE, nx * ny - i * CUB_CHUNK_SIZE)));
-  // }
-
-  // double* hostsum;
-  // hostsum = (double*)malloc( nchunks * sizeof(*hostsum));
-  // CHECK_CUDA(cudaMemcpy(hostsum, devsum, nchunks * sizeof(*devsum), cudaMemcpyDeviceToHost));
-  // double fullsum = 0.0;
-  // for (int i = 0; i < nchunks; i++) {
-  //   fullsum += hostsum[i];
-  // }
-  // std::cout << "\taverage magnetism (absolute): " << abs(fullsum / (nx * ny)) << std::endl;
-
-  // if (write) write_lattice(lattice_g, lattice_b, lattice_w, "final.txt", nx, ny);
-  // write_lattice(lattice_g, lattice_b, lattice_w, "final.txt", nx, ny);
   
 
   return 0;
