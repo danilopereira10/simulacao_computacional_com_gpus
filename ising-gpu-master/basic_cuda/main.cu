@@ -379,6 +379,9 @@ int main(int argc, char **argv) {
     }
     total_energy[i] = fullsum;
     sum2 += fullsum;
+    if (fullsum != 0) {
+      co fullsum << " " << i en;
+    }
     // if (total_energy[i] != 0) {
     //   co total_energy[i] en;
     // }
