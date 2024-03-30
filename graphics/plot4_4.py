@@ -1,6 +1,7 @@
 import numpy as np
 import csv
 from matplotlib import pyplot as plt
+from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
 
 X = []
 Y = []
@@ -40,6 +41,22 @@ with open('20_0.376.txt', 'r') as datafile:
 idx = np.argsort(X3)
 X3 = np.array(X3)[idx]
 Y3 = np.array(Y3)[idx]
+
+
+fig, ax = plt.subplots()
+ax.xaxis.set_major_locator(MultipleLocator(0.2))
+#ax.xaxis.set_major_formatter('{x:.0f}')
+
+# For the minor ticks, use no labels; default NullFormatter.
+ax.xaxis.set_minor_locator(MultipleLocator(0.1))
+
+ax.yaxis.set_major_locator(MultipleLocator(0.2))
+#ax.xaxis.set_major_formatter('{x:.0f}')
+
+# For the minor ticks, use no labels; default NullFormatter.
+ax.yaxis.set_minor_locator(MultipleLocator(0.1))
+plt.xlim(1.0,2.0)
+plt.ylim(0.2, 0.8)
 
 plt.plot(X,Y, color='r', label='alpha=0.376')
 plt.plot(X2,Y2, color='g', label='2')
