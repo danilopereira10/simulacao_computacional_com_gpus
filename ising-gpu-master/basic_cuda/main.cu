@@ -351,9 +351,14 @@ int main(int argc, char **argv) {
   for (int i = 0; i < niters; i++) {
     update(spin_energy_ptr, lattice, randvals, rng, t, nx, ny);
     total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
-    if (total_energy[i] != 0) {
-      co total_energy[i] << " " << i en;
+    for (int i = 0; i < nx; i++) {
+      for (int j = 0; j < ny; j++) {
+        if (spin_energy[i][j] != 0) {
+          co spin_energy[i][j] << " " << i << " " << j en;
+        }
+      }
     }
+    
     //std::cout << total_energy[i] << std::endl;
     if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
