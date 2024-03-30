@@ -25,8 +25,8 @@ float total_energy[N_EQUILIBRIUM +N_AVERAGE + 1];
 
 enum Color {BLACK, WHITE, GREEN};
 
-void initialize_matrix(int N, int matrix[][N], float randomMatrix[][N]) {
-
+// void initialize_matrix(int N, int matrix[][N], float randomMatrix[][N]) {
+void initialize_matrix(int N, int** matrix, float** randomMatrix) {
     for (int i = 0; i < L; i++) {
         for (int j = 0; j < N; j++) {
             //matrix[i][j] = 1.0 *    rand() / (INT_MAX / 2) == 0 ? -1 : 1;
@@ -38,8 +38,8 @@ void initialize_matrix(int N, int matrix[][N], float randomMatrix[][N]) {
 
 }
 
-void reinitialize_random_matrix(int N, float randomMatrix[][N]) {
-
+// void reinitialize_random_matrix(int N, float randomMatrix[][N]) {
+void reinitialize_random_matrix(int N, float** randomMatrix) {
     for (int i = 0; i < L; i++) {
         for (int j = 0; j < N; j++) {
             //matrix[i][j] = 1.0 *    rand() / (INT_MAX / 2) == 0 ? -1 : 1;
@@ -60,7 +60,8 @@ void initialize_ordered(int N, int matrix[][N]) {
 
 }
 
-void initialize_total_energy(int d, float J0, float J1, float J2, int N, int matrix[][N]) {
+// void initialize_total_energy(int d, float J0, float J1, float J2, int N, int matrix[][N]) {
+void initialize_total_energy(int d, float J0, float J1, float J2, int N, int** matrix) {
     float sum = 0.0;
     total_energy[d] = 0.0;
     for (int i = 0; i < L; i++) {
@@ -81,7 +82,8 @@ void initialize_total_energy(int d, float J0, float J1, float J2, int N, int mat
     //total_energy *= 0.5;
 }
 
-void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, int matrix[][N], float randomMatrix[][N]) {
+// void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, int matrix[][N], float randomMatrix[][N]) {
+void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, int** matrix, float** randomMatrix) {
     for (int i = 0; i < L; i++) {
         int j = (i+color) % 3;
         for (;j < N; j+=3) {
@@ -178,8 +180,16 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
         // char[] filename = "valores%d.txt", i;
         
         
-        int matrix[L][N];
-        float randomMatrix[L][N];
+        //int matrix[L][N];
+        int **matrix = (int **)malloc(L*sizeof(int*));
+        for (int i = 0; i < L; i++) {
+            matrix[i] = (int*)malloc(N * sizeof(int));
+        }
+        float **randomMatrix = (float**) malloc(L*sizeof(float*));
+        for (int i = 0 ; i < L; i++) {
+            randomMatrix[i] = (float*)malloc(N*sizeof(float));
+        }
+        // float randomMatrix[L][N];
         
         initialize_matrix(N, matrix, randomMatrix);
         //initialize_ordered();
