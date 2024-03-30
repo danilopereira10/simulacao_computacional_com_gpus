@@ -334,7 +334,7 @@ int main(int argc, char **argv) {
   initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::BLACK, lattice, nx, ny);
   initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::GREEN, lattice, nx, ny);
 
-  thrust::device_vector<float> total_energy(niters);
+  thrust::host_vector<float> total_energy(niters);
   
 
   // Warmup iterations
@@ -351,13 +351,16 @@ int main(int argc, char **argv) {
   for (int i = 0; i < niters; i++) {
     update(spin_energy_ptr, lattice, randvals, rng, t, nx, ny);
     total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
-    for (int i = 0; i < nx; i++) {
-      for (int j = 0; j < ny; j++) {
-        if (spin_energy[i*ny+j] != 0) {
-          co spin_energy[i*ny+j] << " " << i << " " << j en;
-        }
-      }
+    if (total_energy[i] != 0) {
+      co total_energy[i] en;
     }
+    // for (int i = 0; i < nx; i++) {
+    //   for (int j = 0; j < ny; j++) {
+    //     if (spin_energy[i*ny+j] != 0) {
+    //       co spin_energy[i*ny+j] << " " << i << " " << j en;
+    //     }
+    //   }
+    // }
     
     //std::cout << total_energy[i] << std::endl;
     if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
