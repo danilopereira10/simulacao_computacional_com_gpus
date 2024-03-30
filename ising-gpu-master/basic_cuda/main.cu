@@ -46,7 +46,6 @@
 #define J1 0.0f
 #define J2 -1.0f
 #define N_EQUILIBRIUM 100
-#define N_AVERAGE 1000
 
 
 
@@ -346,7 +345,7 @@ int main(int argc, char **argv) {
   initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::BLACK, lattice_g, lattice_w, nx, ny/3);
   initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::GREEN, lattice_w, lattice_b, nx, ny/3);
 
-  thrust::device_vector<float> total_energy(N_AVERAGE);
+  thrust::device_vector<float> total_energy(niters);
   
 
   // Warmup iterations
@@ -366,10 +365,10 @@ int main(int argc, char **argv) {
     if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
   float sum2 = thrust::reduce(total_energy.begin(), total_energy.end());
-  sum2 /= N_AVERAGE;
+  sum2 /= niters;
   float variance = thrust::reduce(total_energy.begin(), total_energy.end(), 0, saxpy_functor(sum2));
 
-  variance /= N_AVERAGE;
+  variance /= niters;
   float specific_heat = variance / (t * t * nx * ny);
   write_values(fileName, t, specific_heat);
 
