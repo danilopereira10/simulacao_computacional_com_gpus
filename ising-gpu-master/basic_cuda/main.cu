@@ -334,7 +334,7 @@ int main(int argc, char **argv) {
 
 
   float* spin_energy;
-  CHECK_CUDA(cudaMalloc(&spin_energy, nx*ny*sizeof(*float)));
+  CHECK_CUDA(cudaMalloc(&spin_energy, nx*ny*sizeof(*spin_energy)));
 
   initialize_spin_energy<<<blocks, THREADS>>>(spin_energy, Color::WHITE, lattice, nx, ny);
   // initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::BLACK, lattice, nx, ny);
@@ -357,7 +357,7 @@ int main(int argc, char **argv) {
   float total_energy[niters];
   double sum2 = 0;
   for (int i = 0; i < niters; i++) {
-    update(spin_energy_ptr, lattice, randvals, rng, t, nx, ny);
+    update(spin_energy, lattice, randvals, rng, t, nx, ny);
     double* devsum;
     int nchunks = (nx * ny + CUB_CHUNK_SIZE - 1)/ CUB_CHUNK_SIZE;
     CHECK_CUDA(cudaMalloc(&devsum, nchunks * sizeof(*devsum)));
