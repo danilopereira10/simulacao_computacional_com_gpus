@@ -46,6 +46,8 @@
 #define J1 0.0f
 #define J2 -1.0f
 #define N_EQUILIBRIUM 100
+#define co cout <<
+#define en << endl;
 
 
 
@@ -294,7 +296,7 @@ int main(int argc, char **argv) {
   float t = 0.6f;
   char* fileName = "0.376_fim.txt";
   long long ny = 12;
-  int niters = 1000000;
+  int niters = 100000;
   // Defaults
   long long nx = 240;
   //long long ny = 12;
@@ -362,6 +364,9 @@ int main(int argc, char **argv) {
   for (int i = 0; i < niters; i++) {
     update(spin_energy_ptr, lattice_g, lattice_b, lattice_w, randvals, rng, t, nx, ny);
     total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
+    if (total_energy[i] != 0) {
+      co total_energy[i] << " " << i en;
+    }
     if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
   float sum2 = thrust::reduce(total_energy.begin(), total_energy.end());
