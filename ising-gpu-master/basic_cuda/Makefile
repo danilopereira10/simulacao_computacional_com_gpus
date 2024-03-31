@@ -9,10 +9,10 @@ CUDACFLAGS= -std=c++11 -c -O3 -lineinfo -arch=sm_70 -Xptxas=-v -I../external/cub
 all: ising_basic
 
 ising_basic: main.o
-	$(LD) -o ising_basic main.o $(LDFLAGS)
+	$(LD) -o ising_basic main.o $(LDFLAGS) -gencode arch=compute_70,code=sm_70
 
 %.o: %.cu
-	nvcc -c $(CUDACFLAGS) $<
+	nvcc -c -gencode arch=compute_70,code=sm_70 $(CUDACFLAGS) $<
 
 clean:
 	rm *.o ising_basic
