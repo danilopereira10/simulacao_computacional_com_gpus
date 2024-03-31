@@ -296,10 +296,10 @@ int main(int argc, char **argv) {
   float alpha = 0.376f;
   float t = 0.6f;
   char* fileName = "0.376_fim.txt";
-  long long ny = 5120;
-  int niters = 1000;
+  long long ny = 240;
+  int niters = 100000;
   // Defaults
-  long long nx = 5120;
+  long long nx = 10;
   //long long ny = 12;
   //float alpha = 0.1f;
   int nwarmup = 100;
