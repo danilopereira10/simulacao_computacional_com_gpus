@@ -166,7 +166,6 @@ __global__ void update_lattice(float* spin_energy, Color color, signed char* lat
 
   if (randvals[i*ny + j] < acceptance_ratio) { // se entrar significa que flipou
     lattice[i * ny + j] = -lij;
-    spin_energy[(i*ny + j)] = nn_sum;
   }
 }
 
@@ -335,9 +334,9 @@ int main(int argc, char **argv) {
 
   thrust::device_vector<float> spin_energy(nx*ny);
   float *spin_energy_ptr = thrust::raw_pointer_cast(&spin_energy[0]);
-  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::WHITE, lattice, nx, ny);
-  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::BLACK, lattice, nx, ny);
-  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::GREEN, lattice, nx, ny);
+  // initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::WHITE, lattice, nx, ny);
+  // initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::BLACK, lattice, nx, ny);
+  // initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::GREEN, lattice, nx, ny);
 
   thrust::device_vector<float> total_energy(niters);
   
@@ -354,10 +353,14 @@ int main(int argc, char **argv) {
   printf("Starting trial iterations...\n");
   auto t0 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < niters; i++) {
+    
     update(spin_energy_ptr, lattice, randvals, rng, t, nx, ny);
-    double tt = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
-    if (tt != 0) {
-      co tt en;
+    
+    
+    initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::WHITE, lattice, nx, ny);
+    double total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
+    if (total_energy[i] != 0) {
+      co total_energy[i] en;
     }
     // for (int i = 0; i < nx; i++) {
     //   for (int j = 0; j < ny; j++) {
