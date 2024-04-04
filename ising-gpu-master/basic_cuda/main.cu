@@ -126,9 +126,9 @@ __global__ void initialize_spin_energy(float j_1, float j_2, float* spin_energy,
   // Compute sum of nearest neighbor spins
 
   signed char nn_sum;
-  nn_sum = j_1*(lattice[inn * ny + j] + lattice[ipp * ny + j]) +  // vizinho 1 vertical
+  nn_sum = lattice[i*ny+j] * (j_1*(lattice[inn * ny + j] + lattice[ipp * ny + j]) +  // vizinho 1 vertical
                       j_2*(lattice[ip2 * ny + j] + lattice[in2 * ny + j]) +  // vizinho 2 vertical
-                      J0*(lattice[i * ny + j2] + lattice[i * ny + j3]);   // vizinho 1 horizontal
+                      J0*(lattice[i * ny + j2] + lattice[i * ny + j3]));   // vizinho 1 horizontal
 
   spin_energy[(i*ny + j)] = sum(nn_sum);
 }
@@ -381,7 +381,7 @@ int main(int argc, char **argv) {
     if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
   float sum2 = thrust::reduce(total_energy.begin(), total_energy.end());
-  float sum3 = sum2 / niters;
+
   co "sum2: " << sum2 en;
   sum2 /= niters;
   calculation<float> unary_op;
