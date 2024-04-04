@@ -339,7 +339,7 @@ int main(int argc, char **argv) {
   // initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::BLACK, lattice, nx, ny);
   // initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::GREEN, lattice, nx, ny);
 
-  thrust::host_vector<float> total_energy(niters);
+  thrust::device_vector<float> total_energy(niters);
   
 
   // Warmup iterations
@@ -360,7 +360,7 @@ int main(int argc, char **argv) {
     
     initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::WHITE, lattice, nx, ny);
     // double tt = 
-    double total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
+    total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
     if (total_energy[i] != 0) {
       co total_energy[i] en;
     }
