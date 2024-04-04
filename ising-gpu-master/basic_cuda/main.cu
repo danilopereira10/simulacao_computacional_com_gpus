@@ -392,6 +392,7 @@ int main(int argc, char **argv) {
   co "sum2: " << sum2 en;
   sum2 /= niters;
   calculation<float> unary_op;
+  unary_op.a = sum2;
   thrust::plus<float> binary_op;
   float init = 0;
 
