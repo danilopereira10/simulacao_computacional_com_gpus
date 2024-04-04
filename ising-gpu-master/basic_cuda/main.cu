@@ -322,9 +322,9 @@ int main(int argc, char **argv) {
   CHECK_CUDA(cudaMalloc(&lattice, (nx * ny) * sizeof(*lattice)));
 
   
+    
 
-
-  int blocks = (nx * ny/ + THREADS - 1) / THREADS;
+  int blocks = (nx * ny + THREADS - 1) / THREADS;
   CHECK_CURAND(curandGenerateUniform(rng, randvals, (nx*ny)));
   init_spins<<<blocks, THREADS>>>(lattice, randvals, nx, ny);
 
