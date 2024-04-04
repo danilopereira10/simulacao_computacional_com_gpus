@@ -103,7 +103,7 @@ __host__ __device__ inline float sum(float x) {
   return x;
 }
 
-__global__ void initialize_spin_energy(float j1, float j2, float* spin_energy, Color color, 
+__global__ void initialize_spin_energy(float j_1, float j_2, float* spin_energy, Color color, 
                                const signed char* __restrict__ lattice,
                                const long long nx,
                                const long long ny) {
@@ -127,15 +127,15 @@ __global__ void initialize_spin_energy(float j1, float j2, float* spin_energy, C
   // Compute sum of nearest neighbor spins
 
   signed char nn_sum;
-  nn_sum = j1*(lattice[inn * ny + j] + lattice[ipp * ny + j]) +  // vizinho 1 vertical
-                      j2*(lattice[ip2 * ny + j] + lattice[in2 * ny + j]) +  // vizinho 2 vertical
-                      J0*(lattice[i * ny + jpp] + lattice[i * ny + jnn]);   // vizinho 1 horizontal
+  nn_sum = j_1*(lattice[inn * ny + j] + lattice[ipp * ny + j]) +  // vizinho 1 vertical
+                      j_2*(lattice[ip2 * ny + j] + lattice[in2 * ny + j]) +  // vizinho 2 vertical
+                      J0*(lattice[i * ny + j2] + lattice[i * ny + j3]);   // vizinho 1 horizontal
 
   spin_energy[(i*ny + j)] = sum(nn_sum);
 }
 
 //template<bool is_black>
-__global__ void update_lattice(float j1, float j2, float* spin_energy, Color color, signed char* lattice,
+__global__ void update_lattice(float j_1, float j_2, float* spin_energy, Color color, signed char* lattice,
                                const float* __restrict__ randvals,
                                const float t,
                                const long long nx,
@@ -162,9 +162,9 @@ __global__ void update_lattice(float j1, float j2, float* spin_energy, Color col
   // Compute sum of nearest neighbor spins
 
   signed char nn_sum;
-  nn_sum = j1*(lattice[inn * ny + j] + lattice[ipp * ny + j]) +  // vizinho 1 vertical
-                      j2*(lattice[ip2 * ny + j] + lattice[in2 * ny + j]) +  // vizinho 2 vertical
-                      J0*(lattice[i * ny + jpp] + lattice[i * ny + jnn]);   // vizinho 1 horizontal
+  nn_sum = j_1*(lattice[inn * ny + j] + lattice[ipp * ny + j]) +  // vizinho 1 vertical
+                      j_2*(lattice[ip2 * ny + j] + lattice[in2 * ny + j]) +  // vizinho 2 vertical
+                      J0*(lattice[i * ny + j2] + lattice[i * ny + j3]);   // vizinho 1 horizontal
 
   
 
@@ -367,7 +367,7 @@ int main(int argc, char **argv) {
     update(j1, j2, spin_energy_ptr, lattice, randvals, rng, t, nx, ny);
     
     
-    initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::WHITE, lattice, nx, ny);
+    initialize_spin_energy<<<blocks, THREADS>>>(j1, j2, spin_energy_ptr, Color::WHITE, lattice, nx, ny);
     // double tt = 
     total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
     // for (int i = 0; i < nx; i++) {
