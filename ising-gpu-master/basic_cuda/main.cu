@@ -39,17 +39,12 @@
 #include "thrust/host_vector.h"
 #include "thrust/transform_reduce.h"
 
-#define TCRIT 2.26918531421f
 #define THREADS  128
 
-#define L 240
-#define C 12
-#define J0 1.0f
-#define J1 0.0f
-#define J2 -1.0f
 #define N_EQUILIBRIUM 20000
 #define co std::cout <<
 #define en << std::endl;
+#define J0 1.0f
 
 
 
@@ -108,7 +103,7 @@ __host__ __device__ inline float sum(float x) {
   return x;
 }
 
-__global__ void initialize_spin_energy(float* spin_energy, Color color, 
+__global__ void initialize_spin_energy(float j1, float j2, float* spin_energy, Color color, 
                                const signed char* __restrict__ lattice,
                                const long long nx,
                                const long long ny) {
@@ -132,15 +127,15 @@ __global__ void initialize_spin_energy(float* spin_energy, Color color,
   // Compute sum of nearest neighbor spins
 
   signed char nn_sum;
-  nn_sum = J1*(lattice[inn * ny + j] + lattice[ipp * ny + j]) +  // vizinho 1 vertical
-                      J2*(lattice[ip2 * ny + j] + lattice[in2 * ny + j]) +  // vizinho 2 vertical
+  nn_sum = j1*(lattice[inn * ny + j] + lattice[ipp * ny + j]) +  // vizinho 1 vertical
+                      j2*(lattice[ip2 * ny + j] + lattice[in2 * ny + j]) +  // vizinho 2 vertical
                       J0*(lattice[i * ny + jpp] + lattice[i * ny + jnn]);   // vizinho 1 horizontal
 
   spin_energy[(i*ny + j)] = sum(nn_sum);
 }
 
 //template<bool is_black>
-__global__ void update_lattice(float* spin_energy, Color color, signed char* lattice,
+__global__ void update_lattice(float j1, float j2, float* spin_energy, Color color, signed char* lattice,
                                const float* __restrict__ randvals,
                                const float t,
                                const long long nx,
@@ -167,8 +162,8 @@ __global__ void update_lattice(float* spin_energy, Color color, signed char* lat
   // Compute sum of nearest neighbor spins
 
   signed char nn_sum;
-  nn_sum = J1*(lattice[inn * ny + j] + lattice[ipp * ny + j]) +  // vizinho 1 vertical
-                      J2*(lattice[ip2 * ny + j] + lattice[in2 * ny + j]) +  // vizinho 2 vertical
+  nn_sum = j1*(lattice[inn * ny + j] + lattice[ipp * ny + j]) +  // vizinho 1 vertical
+                      j2*(lattice[ip2 * ny + j] + lattice[in2 * ny + j]) +  // vizinho 2 vertical
                       J0*(lattice[i * ny + jpp] + lattice[i * ny + jnn]);   // vizinho 1 horizontal
 
   
@@ -241,7 +236,7 @@ void write_values(char* filename, float t, float sh) {
   f.close();
 }
 
-void update(float* total_energy, signed char *lattice, float* randvals, curandGenerator_t rng, float t, long long nx, long long ny) {
+void update(float j1, float j2, float* total_energy, signed char *lattice, float* randvals, curandGenerator_t rng, float t, long long nx, long long ny) {
 
   // Setup CUDA launch configuration
   int blocks = (nx * ny + THREADS - 1) / THREADS;
@@ -249,15 +244,15 @@ void update(float* total_energy, signed char *lattice, float* randvals, curandGe
   // Update black
   //copy_lattice<<<blocks, THREADS>>>(lattice_b, extra_lattice, nx, ny/2);
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny));
-  update_lattice<<<blocks, THREADS>>>(total_energy, Color::BLACK, lattice, randvals, t, nx, ny);
+  update_lattice<<<blocks, THREADS>>>(j1, j2, total_energy, Color::BLACK, lattice, randvals, t, nx, ny);
 
   // Update white
   //copy_lattice<<<blocks, THREADS>>>(lattice_w, extra_lattice, nx, ny/2);
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny));
-  update_lattice<<<blocks, THREADS>>>(total_energy, Color::WHITE, lattice,  randvals, t, nx, ny);
+  update_lattice<<<blocks, THREADS>>>(j1, j2, total_energy, Color::WHITE, lattice,  randvals, t, nx, ny);
 
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny));
-  update_lattice<<<blocks, THREADS>>>(total_energy, Color::GREEN, lattice, randvals, t, nx, ny);
+  update_lattice<<<blocks, THREADS>>>(j1, j2, total_energy, Color::GREEN, lattice, randvals, t, nx, ny);
 }
 
 static void usage(const char *pname) {
@@ -310,6 +305,8 @@ int main(int argc, char **argv) {
   // int niters = atoi(argv[7]);
   float alpha = 0.376f;
   float t = 0.6f;
+  float j1 = (1-alpha)*J0;
+  float j2 = -alpha*J0;
   char* fileName = "0.376_fim.txt";
   long long ny = 10;
   int niters = 100000;
@@ -357,7 +354,7 @@ int main(int argc, char **argv) {
   // Warmup iterations
   printf("Starting warmup...\n");
   for (int i = 0; i < nwarmup; i++) {
-    update(spin_energy_ptr, lattice, randvals, rng, t, nx, ny);
+    update(j1, j2, spin_energy_ptr, lattice, randvals, rng, t, nx, ny);
   }
   
 
@@ -367,15 +364,12 @@ int main(int argc, char **argv) {
   auto t0 = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < niters; i++) {
     
-    update(spin_energy_ptr, lattice, randvals, rng, t, nx, ny);
+    update(j1, j2, spin_energy_ptr, lattice, randvals, rng, t, nx, ny);
     
     
     initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::WHITE, lattice, nx, ny);
     // double tt = 
     total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
-    if (total_energy[i] != 0) {
-      co total_energy[i] en;
-    }
     // for (int i = 0; i < nx; i++) {
     //   for (int j = 0; j < ny; j++) {
     //     if (spin_energy[i*ny+j] != 0) {
@@ -409,7 +403,7 @@ int main(int argc, char **argv) {
   double duration = (double) std::chrono::duration_cast<std::chrono::microseconds>(t1-t0).count();
   printf("REPORT:\n");
   printf("\tnGPUs: %d\n", 1);
-  printf("\ttemperature: %f * %f\n", alpha, TCRIT);
+  printf("\ttemperature: %f * %f\n", alpha, t);
   printf("\tseed: %llu\n", seed);
   printf("\twarmup iterations: %d\n", nwarmup);
   printf("\ttrial iterations: %d\n", niters);
