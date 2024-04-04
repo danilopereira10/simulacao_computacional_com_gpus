@@ -132,7 +132,7 @@ void write_lattice(signed char *lattice_b, signed char *lattice_w, std::string f
   free(lattice_w_h);
 }
 
-void update(float dptr, signed char *lattice_b, signed char *lattice_w, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny) {
+void update(float* dptr, signed char *lattice_b, signed char *lattice_w, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny) {
 
   // Setup CUDA launch configuration
   int blocks = (nx * ny/2 + THREADS - 1) / THREADS;
@@ -277,7 +277,7 @@ int main(int argc, char **argv) {
     if (i % 1000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
   double gpu_sum = thrust::reduce(dsums.begin(),dsums.end());
-  cout << "Gpusum: " + gpusum << endl;
+  cout << "Gpusum: " + gpu_sum << endl;
 
   CHECK_CUDA(cudaDeviceSynchronize());
   auto t1 = std::chrono::high_resolution_clock::now();
