@@ -278,7 +278,7 @@ int main(int argc, char **argv) {
     if (i % 1000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
   double gpu_sum = thrust::reduce(dsums.begin(),dsums.end());
-  std::cout << "Gpusum: " + gpu_sum << std::endl;
+  std::cout << "Gpusum: " << gpu_sum << std::endl;
 
   CHECK_CUDA(cudaDeviceSynchronize());
   auto t1 = std::chrono::high_resolution_clock::now();
