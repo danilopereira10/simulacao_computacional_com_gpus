@@ -376,7 +376,10 @@ int main(int argc, char **argv) {
     if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
   float sum2 = thrust::reduce(total_energy.begin(), total_energy.end());
+  float sum4 = thrust::reduce(total_energy.begin(), total_energy.end());
+  float sum3 = sum2 / niters;
   co "sum2: " << sum2 en;
+  co "sum4: " << sum4 en;
   sum2 /= niters;
   float variance = thrust::reduce(total_energy.begin(), total_energy.end(), 0, saxpy_functor(sum2));
   co "variance: " << variance en;
