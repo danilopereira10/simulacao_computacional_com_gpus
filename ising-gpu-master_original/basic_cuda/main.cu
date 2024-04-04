@@ -259,19 +259,20 @@ int main(int argc, char **argv) {
   init_spins<<<blocks, THREADS>>>(lattice_b, randvals, nx, ny/2);
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/2));
   init_spins<<<blocks, THREADS>>>(lattice_w, randvals, nx, ny/2);
-
+  thrust::device_vector<float> dsums(nx*ny/2);
+  float *dptr = thrust::raw_pointer_cast(&dsums[0]);
   // Warmup iterations
   printf("Starting warmup...\n");
   for (int i = 0; i < nwarmup; i++) {
-    update(lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
+    update(dptr, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
   }
 
   CHECK_CUDA(cudaDeviceSynchronize());
 
   printf("Starting trial iterations...\n");
   auto t0 = std::chrono::high_resolution_clock::now();
-  thrust::device_vector<float> dsums(nx*ny/2);
-  float *dptr = thrust::raw_pointer_cast(&dsums[0]);   
+  
+     
   for (int i = 0; i < niters; i++) {
     update(dptr, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
     if (i % 1000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
