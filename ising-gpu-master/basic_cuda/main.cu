@@ -125,7 +125,7 @@ __global__ void initialize_spin_energy(float j_1, float j_2, float* spin_energy,
 
   // Compute sum of nearest neighbor spins
 
-  signed char nn_sum;
+  float nn_sum;
   nn_sum = lattice[i*ny+j] * (j_1*(lattice[inn * ny + j] + lattice[ipp * ny + j]) +  // vizinho 1 vertical
                       j_2*(lattice[ip2 * ny + j] + lattice[in2 * ny + j]) +  // vizinho 2 vertical
                       J0*(lattice[i * ny + jpp] + lattice[i * ny + jnn]));   // vizinho 1 horizontal
