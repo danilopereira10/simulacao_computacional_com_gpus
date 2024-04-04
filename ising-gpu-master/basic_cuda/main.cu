@@ -302,8 +302,8 @@ int main(int argc, char **argv) {
   // char* fileName = argv[5];
   // long long ny = atoll(argv[6]);
   // int niters = atoi(argv[7]);
-  float alpha = 0.376f;
-  float t = 0.6f;
+  float alpha = 1.0f;
+  float t = 1.5f;
   float j1 = (1-alpha)*J0;
   float j2 = -alpha*J0;
   char* fileName = "0.376_fim.txt";
