@@ -35,15 +35,17 @@
 
 #include "cudamacro.h"
 #include "cuda_runtime.h"
-// #include "thrust/device_vector.h"
-// #include <thrust/host_vector.h>
+#include "thrust/device_vector.h"
 
 #define TCRIT 2.26918531421f
 #define THREADS  128
 
+#define L 240
+#define C 12
 #define J0 1.0f
 #define J1 0.0f
 #define J2 -1.0f
+#define N_EQUILIBRIUM 20000
 #define co std::cout <<
 #define en << std::endl;
 
@@ -110,7 +112,8 @@ __global__ void initialize_spin_energy(float* spin_energy, Color color,
   int in2 = (i - 2 >= 0) ? i - 2 : i - 2 + ny;
   int jpp = (j + 1 < ny) ? j + 1 : 0;
   int jnn = (j - 1 >= 0) ? j - 1: ny - 1;
-
+  int j2 = (j == (ny-1)) ? jpp : j;
+  int j3 = (j == 0) ? jnn : j;
 
 
   // Compute sum of nearest neighbor spins
@@ -120,7 +123,7 @@ __global__ void initialize_spin_energy(float* spin_energy, Color color,
                       J2*(lattice[ip2 * ny + j] + lattice[in2 * ny + j]) +  // vizinho 2 vertical
                       J0*(lattice[i * ny + jpp] + lattice[i * ny + jnn]);   // vizinho 1 horizontal
 
-  spin_energy[(i*ny + j)] = nn_sum;
+  spin_energy[(i*ny + j)] = sum(nn_sum);
 }
 
 //template<bool is_black>
@@ -278,11 +281,11 @@ static void usage(const char *pname) {
   exit(EXIT_SUCCESS);
 }
 
-// void saxpy_fast(float A, thrust::device_vector<float>& X, thrust::device_vector<float>& Y)
-// {
-//     // Y <- A * X + Y
-//     thrust::transform(X.begin(), X.end(), Y.begin(), Y.begin(), saxpy_functor(A));
-// }
+void saxpy_fast(float A, thrust::device_vector<float>& X, thrust::device_vector<float>& Y)
+{
+    // Y <- A * X + Y
+    thrust::transform(X.begin(), X.end(), Y.begin(), Y.begin(), saxpy_functor(A));
+}
 
 int main(int argc, char **argv) {
 
@@ -296,13 +299,13 @@ int main(int argc, char **argv) {
   float alpha = 0.376f;
   float t = 0.6f;
   char* fileName = "0.376_fim.txt";
-  long long ny = 240;
+  long long ny = 10;
   int niters = 100000;
   // Defaults
-  long long nx = 10;
+  long long nx = 240;
   //long long ny = 12;
   //float alpha = 0.1f;
-  int nwarmup = 100;
+  int nwarmup = N_EQUILIBRIUM;
   bool write = false;
   unsigned long long seed = 1234ULL;
 
@@ -322,7 +325,7 @@ int main(int argc, char **argv) {
   CHECK_CUDA(cudaMalloc(&lattice, (nx * ny) * sizeof(*lattice)));
 
   
-    
+
 
   int blocks = (nx * ny + THREADS - 1) / THREADS;
   CHECK_CURAND(curandGenerateUniform(rng, randvals, (nx*ny)));
@@ -330,20 +333,19 @@ int main(int argc, char **argv) {
 
 
 
-  float* spin_energy;
-  CHECK_CUDA(cudaMalloc(&spin_energy, nx*ny*sizeof(*spin_energy)));
+  thrust::device_vector<float> spin_energy(nx*ny);
+  float *spin_energy_ptr = thrust::raw_pointer_cast(&spin_energy[0]);
+  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::WHITE, lattice, nx, ny);
+  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::BLACK, lattice, nx, ny);
+  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::GREEN, lattice, nx, ny);
 
-  initialize_spin_energy<<<blocks, THREADS>>>(spin_energy, Color::WHITE, lattice, nx, ny);
-  // initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::BLACK, lattice, nx, ny);
-  // initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::GREEN, lattice, nx, ny);
-
-  
+  thrust::device_vector<float> total_energy(niters);
   
 
   // Warmup iterations
   printf("Starting warmup...\n");
   for (int i = 0; i < nwarmup; i++) {
-    update(spin_energy, lattice, randvals, rng, t, nx, ny);
+    update(spin_energy_ptr, lattice, randvals, rng, t, nx, ny);
   }
   
 
@@ -351,34 +353,9 @@ int main(int argc, char **argv) {
 
   printf("Starting trial iterations...\n");
   auto t0 = std::chrono::high_resolution_clock::now();
-  float total_energy[niters];
-  double sum2 = 0;
   for (int i = 0; i < niters; i++) {
-    update(spin_energy, lattice, randvals, rng, t, nx, ny);
-    double* devsum;
-    int nchunks = (nx * ny + CUB_CHUNK_SIZE - 1)/ CUB_CHUNK_SIZE;
-    CHECK_CUDA(cudaMalloc(&devsum, nchunks * sizeof(*devsum)));
-    size_t cub_workspace_bytes = 0;
-    void* workspace = NULL;
-    CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, lattice, devsum, CUB_CHUNK_SIZE));
-    CHECK_CUDA(cudaMalloc(&workspace, cub_workspace_bytes));
-    for (int i = 0; i < nchunks; i++) {
-      CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, &lattice[i*CUB_CHUNK_SIZE], devsum + i,
-                            std::min((long long) CUB_CHUNK_SIZE, nx * ny - i * CUB_CHUNK_SIZE)));
-    }
-
-    double* hostsum;
-    hostsum = (double*)malloc(nchunks * sizeof(*hostsum));
-    CHECK_CUDA(cudaMemcpy(hostsum, devsum, nchunks * sizeof(*devsum), cudaMemcpyDeviceToHost));
-    double fullsum = 0.0;
-    for (int i = 0; i < nchunks; i++) {
-      fullsum += hostsum[i];
-    }
-    total_energy[i] = fullsum;
-    sum2 += fullsum;
-    if (fullsum != 0) {
-      co fullsum << " " << i en;
-    }
+    update(spin_energy_ptr, lattice, randvals, rng, t, nx, ny);
+    double tt = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
     // if (total_energy[i] != 0) {
     //   co total_energy[i] en;
     // }
@@ -393,15 +370,13 @@ int main(int argc, char **argv) {
     //std::cout << total_energy[i] << std::endl;
     if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
+  float sum2 = thrust::reduce(total_energy.begin(), total_energy.end());
   sum2 /= niters;
-  double var = 0;
-  for (int i = 0; i < niters; i++) {
-    var += (total_energy[i]-sum2)*(total_energy[i]-sum2);
-  }
-  var /= niters;
-  float specific_heat = var /(t*t*nx*ny);
-  
-  write_values(fileName, t, specific_heat*1000);
+  float variance = thrust::reduce(total_energy.begin(), total_energy.end(), 0, saxpy_functor(sum2));
+
+  variance /= niters;
+  float specific_heat = variance / (t * t * nx * ny);
+  write_values(fileName, t, specific_heat);
 
   CHECK_CUDA(cudaDeviceSynchronize());
   auto t1 = std::chrono::high_resolution_clock::now();
@@ -416,9 +391,6 @@ int main(int argc, char **argv) {
   printf("\tlattice dimensions: %lld x %lld\n", nx, ny);
   printf("\telapsed time: %f sec\n", duration * 1e-6);
   printf("\tupdates per ns: %f\n", (double) (nx * ny) * niters / duration * 1e-3);
-
-  
-
 
   
 
