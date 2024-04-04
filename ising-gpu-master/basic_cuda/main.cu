@@ -41,7 +41,6 @@
 
 #define THREADS  128
 
-#define N_EQUILIBRIUM 20000
 #define co std::cout <<
 #define en << std::endl;
 #define J0 1.0f
@@ -314,7 +313,7 @@ int main(int argc, char **argv) {
   long long nx = 240;
   //long long ny = 12;
   //float alpha = 0.1f;
-  int nwarmup = N_EQUILIBRIUM;
+  int nwarmup = 20000;
   bool write = false;
   unsigned long long seed = 1234ULL;
 
@@ -392,7 +391,11 @@ int main(int argc, char **argv) {
 
   float variance = thrust::transform_reduce(total_energy.begin(), total_energy.end(), unary_op, 0,  binary_op);
   co "variance: " << variance en;
-
+  variance = 0;
+  for (int i = 0; i < niters; i++) {
+    variance += (total_energy[i]-sum2)*(total_energy[i]-sum2);
+  }
+  co "variance: " << variance en;
   variance /= niters;
   float specific_heat = variance / (t * t * nx * ny);
   write_values(fileName, t, specific_heat);
