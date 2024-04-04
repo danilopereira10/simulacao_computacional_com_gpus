@@ -37,6 +37,7 @@
 #include "cuda_runtime.h"
 #include "thrust/device_vector.h"
 #include "thrust/host_vector.h"
+#include "thrust/transform_reduce.h"
 
 #define TCRIT 2.26918531421f
 #define THREADS  128
@@ -65,6 +66,17 @@ struct saxpy_functor
         float operator()(const float& x, const float& y) const {
             return (x-a) * (x - a);
         }
+};
+
+// square<T> computes the square of a number f(x) -> x*x
+template <typename T>
+struct calculation
+{
+  float a;
+  __host__ __device__
+    T operator()(const T& x) const {
+      return (x-a) * (x-a);
+  }
 };
 
 // Initialize lattice spins
@@ -376,12 +388,14 @@ int main(int argc, char **argv) {
     if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
   float sum2 = thrust::reduce(total_energy.begin(), total_energy.end());
-  float sum4 = thrust::reduce(total_energy.begin(), total_energy.end());
   float sum3 = sum2 / niters;
   co "sum2: " << sum2 en;
-  co "sum4: " << sum4 en;
   sum2 /= niters;
-  float variance = thrust::reduce(total_energy.begin(), total_energy.end(), 0, saxpy_functor(sum2));
+  calculation<float> unary_op;
+  thrust::plus<float> binary_op;
+  float init = 0;
+
+  float variance = thrust::transform_reduce(total_energy.begin(), total_energy.end(), unary_op, 0,  binary_op);
   co "variance: " << variance en;
 
   variance /= niters;
