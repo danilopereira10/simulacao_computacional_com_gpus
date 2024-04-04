@@ -338,7 +338,7 @@ int main(int argc, char **argv) {
   // initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::BLACK, lattice, nx, ny);
   // initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::GREEN, lattice, nx, ny);
 
-  thrust::device_vector<float> total_energy(niters);
+  thrust::host_vector<float> total_energy(niters);
   
 
   // Warmup iterations
@@ -358,6 +358,7 @@ int main(int argc, char **argv) {
     
     
     initialize_spin_energy<<<blocks, THREADS>>>(spin_energy_ptr, Color::WHITE, lattice, nx, ny);
+    // double tt = 
     double total_energy[i] = thrust::reduce(spin_energy.begin(), spin_energy.end()) / (-2);
     if (total_energy[i] != 0) {
       co total_energy[i] en;
@@ -374,8 +375,10 @@ int main(int argc, char **argv) {
     if (i % 10000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
   float sum2 = thrust::reduce(total_energy.begin(), total_energy.end());
+  co "sum2: " << sum2 en;
   sum2 /= niters;
   float variance = thrust::reduce(total_energy.begin(), total_energy.end(), 0, saxpy_functor(sum2));
+  co "variance: " << variance en;
 
   variance /= niters;
   float specific_heat = variance / (t * t * nx * ny);
