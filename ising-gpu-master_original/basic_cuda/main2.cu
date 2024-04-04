@@ -34,7 +34,6 @@
 #define CUB_CHUNK_SIZE ((1ll<<31) - (1ll<<28))
 
 #include "cudamacro.h"
-#include "thrust/device_vector.h"
 
 #define TCRIT 2.26918531421f
 #define THREADS  128
@@ -53,7 +52,7 @@ __global__ void init_spins(signed char* lattice,
 }
 
 template<bool is_black>
-__global__ void update_lattice(float* dptr, signed char* lattice,
+__global__ void update_lattice(signed char* lattice,
                                const signed char* __restrict__ op_lattice,
                                const float* __restrict__ randvals,
                                const float inv_temp,
@@ -85,11 +84,9 @@ __global__ void update_lattice(float* dptr, signed char* lattice,
   // Determine whether to flip spin
   signed char lij = lattice[i * ny + j];
   float acceptance_ratio = exp(-2.0f * inv_temp * nn_sum * lij);
-  
   if (randvals[i*ny + j] < acceptance_ratio) {
     lattice[i * ny + j] = -lij;
   }
-  dptr[i*ny+j] = nn_sum;
 }
 
 // Write lattice configuration to file
@@ -132,18 +129,18 @@ void write_lattice(signed char *lattice_b, signed char *lattice_w, std::string f
   free(lattice_w_h);
 }
 
-void update(float dptr, signed char *lattice_b, signed char *lattice_w, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny) {
+void update(signed char *lattice_b, signed char *lattice_w, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny) {
 
   // Setup CUDA launch configuration
   int blocks = (nx * ny/2 + THREADS - 1) / THREADS;
 
   // Update black
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/2));
-  update_lattice<true><<<blocks, THREADS>>>(dptr, lattice_b, lattice_w, randvals, inv_temp, nx, ny/2);
+  update_lattice<true><<<blocks, THREADS>>>(lattice_b, lattice_w, randvals, inv_temp, nx, ny/2);
 
   // Update white
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/2));
-  update_lattice<false><<<blocks, THREADS>>>(dptr, lattice_w, lattice_b, randvals, inv_temp, nx, ny/2);
+  update_lattice<false><<<blocks, THREADS>>>(lattice_w, lattice_b, randvals, inv_temp, nx, ny/2);
 }
 
 static void usage(const char *pname) {
@@ -270,14 +267,10 @@ int main(int argc, char **argv) {
 
   printf("Starting trial iterations...\n");
   auto t0 = std::chrono::high_resolution_clock::now();
-  thrust::device_vector<float> dsums(nx*ny/2);
-  float *dptr = thrust::raw_pointer_cast(&dsums[0]);   
   for (int i = 0; i < niters; i++) {
-    update(dptr, lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
+    update(lattice_b, lattice_w, randvals, rng, inv_temp, nx, ny);
     if (i % 1000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
-  double gpu_sum = thrust::reduce(dsums.begin(),dsums.end());
-  cout << "Gpusum: " + gpusum << endl;
 
   CHECK_CUDA(cudaDeviceSynchronize());
   auto t1 = std::chrono::high_resolution_clock::now();
