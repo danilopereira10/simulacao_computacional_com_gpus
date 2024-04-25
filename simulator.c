@@ -6,7 +6,7 @@
 #include <string.h>
 
 
-#define L 5120
+#define L 176
 // #define J0 1.0f
 // #define J1 0.0f
 // #define J2 -1.0f // Valor de alpha = 1, com J_0=1 (paper Selke 1981)
@@ -16,8 +16,8 @@
 
 //float alpha = 0.1f;
 // #define TEMP 3.0f
-#define N_EQUILIBRIUM 100
-#define N_AVERAGE 1000
+#define N_EQUILIBRIUM 1000000
+#define N_AVERAGE 10000000
 
 float total_energy[N_EQUILIBRIUM +N_AVERAGE + 1];
 
@@ -226,16 +226,37 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
         //fclose(fptr3);
 
         float av_energy = 0;
-        for (int i = 1+N_EQUILIBRIUM; i <  1+N_EQUILIBRIUM+N_AVERAGE; i++) {
-            av_energy += total_energy[i];
+        float total_energy2[N_AVERAGE];
+        for (int i = 1 + N_EQUILIBRIUM; i < 1+N_EQUILIBRIUM+N_AVERAGE; i++) {
+            total_energy2[i-(1+N_EQUILIBRIUM)] = total_energy[i];
         }
-        av_energy = av_energy / (N_AVERAGE);
-        float variance = 0;
-        for (int i = 1+N_EQUILIBRIUM; i <  1+N_EQUILIBRIUM+N_AVERAGE; i++) {
-            variance += (total_energy[i]-av_energy)*(total_energy[i]-av_energy);
+
+
+
+        int p = 1; 
+        while (p < N_AVERAGE) {
+            for (int i = 0; i+p < N_AVERAGE; i+= 2*p) {
+                total_energy2[i] = total_energy2[i] + total_energy2[i+p];
+            }
+            p *= 2;
         }
-        variance = variance / (N_AVERAGE);
-        float specific_heat = variance / (t*t*L*N);
+
+        av_energy = total_energy2[0] / (N_AVERAGE);
+        float variance[N_AVERAGE];
+        for (int i = 1+N_EQUILIBRIUM; i <  1+N_EQUILIBRIUM+N_AVERAGE; i++) {
+            variance[i - (1+N_EQUILIBRIUM)] = (total_energy[i]-av_energy)*(total_energy[i]-av_energy);
+        }
+
+        p = 1;
+        while (p < N_AVERAGE) {
+            for (int i = 0; i+p < N_AVERAGE; i+= 2*p) {
+                variance[i] = variance[i] + variance[i+p];
+            }
+            p *= 2;
+        }
+
+        variance[0] = variance[0] / (N_AVERAGE);
+        float specific_heat = variance[0] / (t*t*L*N);
         write_values(filename, t, specific_heat);
         //TEMP : 1.5f -> specific_heat: 0.233231202
         //TEMP : 2.0f -> specific_heat: 0.868345141
