@@ -285,17 +285,18 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
 }
 
 int main(int argc, char* argv[]) {
-    float alpha = 0.1f;
-    //float alpha = atof(argv[1]);
-    // float t = atof(argv[2]);
-    float t = 2.26918531421f;
-    float t_end = t + 0.1;
-    float step = 1;
-    char* fileName= "haha.txt";
-    int N =5120;
-    // float t_end = atof(argv[3]);
-    // float step = atof(argv[4]);
-    // char* fileName = argv[5];
-    // int N = atoi(argv[6]);
+    // float alpha = 0.1f;
+    // float t = 2.26918531421f;
+    // float t_end = t + 0.1;
+    // float step = 1;
+    // char* fileName= "haha.txt";
+    // int N =5120;
+
+    float alpha = atof(argv[1]);
+    float t = atof(argv[2]);
+    float t_end = atof(argv[3]);
+    float step = atof(argv[4]);
+    char* fileName = argv[5];
+    int N = atoi(argv[6]);
     runc(alpha, t, t_end, step, fileName, N);
 }

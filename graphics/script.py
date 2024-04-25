@@ -13,9 +13,9 @@ niters = "1000000"
 for i in range (len(alpha)):
     t = t1[i]
     t_end = t + 0.02
-    step = 0.002
+    step = 0.1
     while(t <= t2[i]):
-        l = ["./ising_basic", str(alpha[i]), str(t), str(t_end), str(step), str(alpha[i])+".txt", "10", niters]
+        l = ["./simulator", str(alpha[i]), str(t), str(t_end), str(step), str(alpha[i])+".txt", "10", niters]
         subprocess.Popen(l, stdout=subprocess.PIPE)
         t += 0.02
         t_end += 0.02
