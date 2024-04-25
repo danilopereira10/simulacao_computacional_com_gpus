@@ -228,7 +228,8 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
         //fclose(fptr3);
 
         float av_energy = 0;
-        float total_energy2[N_AVERAGE];
+        // float total_energy2[N_AVERAGE];
+        float* total_energy2 = (float *)malloc((N_AVERAGE) * sizeof(float));
         for (int i = 1 + N_EQUILIBRIUM; i < 1+N_EQUILIBRIUM+N_AVERAGE; i++) {
             total_energy2[i-(1+N_EQUILIBRIUM)] = total_energy[i];
         }
@@ -244,7 +245,8 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
         }
 
         av_energy = total_energy2[0] / (N_AVERAGE);
-        float variance[N_AVERAGE];
+        // float variance[N_AVERAGE];
+        float* variance = (float *)malloc((N_AVERAGE) * sizeof(float));
         for (int i = 1+N_EQUILIBRIUM; i <  1+N_EQUILIBRIUM+N_AVERAGE; i++) {
             variance[i - (1+N_EQUILIBRIUM)] = (total_energy[i]-av_energy)*(total_energy[i]-av_energy);
         }
