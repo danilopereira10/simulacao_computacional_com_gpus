@@ -19,7 +19,7 @@
 #define N_EQUILIBRIUM 1000000
 #define N_AVERAGE 10000000
 
-float total_energy[N_EQUILIBRIUM +N_AVERAGE + 1];
+// float total_energy[N_EQUILIBRIUM +N_AVERAGE + 1];
 
 //int j_0=1, j_1 = 1, j_2 = 1;
 
@@ -61,7 +61,7 @@ void initialize_ordered(int N, int matrix[][N]) {
 }
 
 // void initialize_total_energy(int d, float J0, float J1, float J2, int N, int matrix[][N]) {
-void initialize_total_energy(int d, float J0, float J1, float J2, int N, int** matrix) {
+void initialize_total_energy(int d, float J0, float J1, float J2, int N, int** matrix, float* total_energy) {
     float sum = 0.0;
     total_energy[d] = 0.0;
     for (int i = 0; i < L; i++) {
@@ -119,34 +119,34 @@ void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, 
 }
 
 
-void write_matrix(FILE *fptr, FILE *fptr2, int i, int N, int matrix[][N]) {
-    //int num;
+// void write_matrix(FILE *fptr, FILE *fptr2, int i, int N, int matrix[][N]) {
+//     //int num;
     
 
-    // fptr = fopen("arquivo.txt", "w");
-    // if(fptr == NULL)
-    // {
-    //     printf("Error!");   
-    //     exit(1);             
-    // } 
-    for (int i = 0; i < L; i++) {
-        for (int j = 0; j < N; j++) {
-            //fprintf(fptr, "%d ", (int)matrix[i][j]);
-            if(matrix[i][j] == 1) {
-                //printf("opa");
-            }
-        }
-        //fprintf(fptr, "\n");
-    }
-    fprintf(fptr, "\n");
-    //fclose(fptr);
+//     // fptr = fopen("arquivo.txt", "w");
+//     // if(fptr == NULL)
+//     // {
+//     //     printf("Error!");   
+//     //     exit(1);             
+//     // } 
+//     for (int i = 0; i < L; i++) {
+//         for (int j = 0; j < N; j++) {
+//             //fprintf(fptr, "%d ", (int)matrix[i][j]);
+//             if(matrix[i][j] == 1) {
+//                 //printf("opa");
+//             }
+//         }
+//         //fprintf(fptr, "\n");
+//     }
+//     fprintf(fptr, "\n");
+//     //fclose(fptr);
 
-    fprintf(fptr2, "%d, %f ", i, total_energy[i]);
-    fprintf(fptr2, "\n");
-    //fprintf(fptr2, "%f %d %f %f", total_energy, J0, J1, J2);
+//     fprintf(fptr2, "%d, %f ", i, total_energy[i]);
+//     fprintf(fptr2, "\n");
+//     //fprintf(fptr2, "%f %d %f %f", total_energy, J0, J1, J2);
     
     
-}
+// }
 
 void write_values(char* filename, float t, float sh) {
     FILE *fptr3 = fopen(filename, "a");
@@ -181,6 +181,8 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
         
         
         //int matrix[L][N];
+        float* total_energy = (float *)malloc((N_EQUILIBRIUM +N_AVERAGE + 1) * sizeof(float));
+
         int **matrix = (int **)malloc(L*sizeof(int*));
         for (int i = 0; i < L; i++) {
             matrix[i] = (int*)malloc(N * sizeof(int));
@@ -193,7 +195,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
         
         initialize_matrix(N, matrix, randomMatrix);
         //initialize_ordered();
-        initialize_total_energy(0, J0, J1, J2, N, matrix);
+        initialize_total_energy(0, J0, J1, J2, N, matrix, total_energy);
         //printf("%f", total_energy);
         //FILE *fptr, *fptr2, *fptr3;
         // fptr = fopen("arquivo_eq.txt", "w");
@@ -204,7 +206,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
             flip_spins(BLACK, J0, J1, J2, t, N, matrix, randomMatrix);
             flip_spins(WHITE, J0, J1, J2, t, N, matrix, randomMatrix);
             flip_spins(GREEN, J0, J1, J2, t, N, matrix, randomMatrix);
-            initialize_total_energy(i+1, J0, J1, J2, N, matrix);
+            initialize_total_energy(i+1, J0, J1, J2, N, matrix, total_energy);
             reinitialize_random_matrix(N, randomMatrix);
         }
         // fclose(fptr);
