@@ -16,8 +16,8 @@
 
 //float alpha = 0.1f;
 // #define TEMP 3.0f
-#define N_EQUILIBRIUM 1000000
-#define N_AVERAGE 10000000
+#define N_EQUILIBRIUM 100000
+#define N_AVERAGE 1000000
 
 // float total_energy[N_EQUILIBRIUM +N_AVERAGE + 1];
 
@@ -159,8 +159,8 @@ void write_values(char* filename, float t, float sh) {
 
 
 int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
-    srand((unsigned) time(NULL));
     while (t < t_end) {
+        srand((unsigned) time(NULL));
         clock_t start, end;
         
     
