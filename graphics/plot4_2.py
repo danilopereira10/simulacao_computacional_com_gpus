@@ -1,6 +1,7 @@
 import numpy as np
 import csv
 from matplotlib import pyplot as plt
+from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
 
 X = []
 Y = []
@@ -56,6 +57,22 @@ Y4 = np.array(Y4)[idx]
 idx = np.argsort(X5)
 X5 = np.array(X5)[idx]
 Y5 = np.array(Y5)[idx]
+
+fig, ax = plt.subplots()
+ax.xaxis.set_major_locator(MultipleLocator(0.3))
+#ax.xaxis.set_major_formatter('{x:.0f}')
+
+# For the minor ticks, use no labels; default NullFormatter.
+# ax.xaxis.set_minor_locator(MultipleLocator(0.1))
+
+ax.yaxis.set_major_locator(MultipleLocator(0.3))
+#ax.xaxis.set_major_formatter('{x:.0f}')
+
+# For the minor ticks, use no labels; default NullFormatter.
+# ax.yaxis.set_minor_locator(MultipleLocator(0.1))
+plt.xlim(0.6,3.0)
+plt.ylim(0, 1.5)
+
 plt.plot(X,Y, color='r', label='alpha=0.376')
 plt.plot(X2,Y2, color='g', label='2')
 plt.plot(X3,Y3, color='y', label='3')

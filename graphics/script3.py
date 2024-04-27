@@ -8,7 +8,7 @@ alpha = [0.285, 0.376, 0.637]
 n = [5, 10, 20]
 t1 =  [0.9, 1.0, 1.5]
 t2 = [2.1, 2.0 , 2.5]
-
+niters = "1000000"
 j = 0
 
 for i in range (len(alpha)):
@@ -16,9 +16,12 @@ for i in range (len(alpha)):
         n2 = n[j]
         al = alpha[i]
         t = t1[i]
+        t_end = t + 0.02
+        step = 0.002
         while (t <= t2[i]):
-            l = ["./simulator", str(alpha[i]), str(t), str(n2)+"_"+str(alpha[i])+".txt", str(n2)]
+            l = ["./simulator", str(alpha[i]), str(t), str(t_end), str(step), str(n2)+"_"+str(alpha[i])+".txt", str(n2), niters]
             subprocess.Popen(l, stdout=subprocess.PIPE)
             t += 0.02
+            t_end += 0.02
             j += 1
 
