@@ -159,6 +159,19 @@ void write_values(char* filename, float t, float sh) {
 
 
 int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
+    float* total_energy = (float *)malloc((N_EQUILIBRIUM +N_AVERAGE + 1) * sizeof(float));
+
+    int **matrix = (int **)malloc(L*sizeof(int*));
+    for (int i = 0; i < L; i++) {
+        matrix[i] = (int*)malloc(N * sizeof(int));
+    }
+    float **randomMatrix = (float**) malloc(L*sizeof(float*));
+    for (int i = 0 ; i < L; i++) {
+        randomMatrix[i] = (float*)malloc(N*sizeof(float));
+    }
+    float* total_energy2 = (float *)malloc((N_AVERAGE) * sizeof(float));
+    float* variance = (float *)malloc((N_AVERAGE) * sizeof(float));
+    
     while (t < t_end) {
         srand((unsigned) time(NULL));
         clock_t start, end;
@@ -181,16 +194,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
         
         
         //int matrix[L][N];
-        float* total_energy = (float *)malloc((N_EQUILIBRIUM +N_AVERAGE + 1) * sizeof(float));
-
-        int **matrix = (int **)malloc(L*sizeof(int*));
-        for (int i = 0; i < L; i++) {
-            matrix[i] = (int*)malloc(N * sizeof(int));
-        }
-        float **randomMatrix = (float**) malloc(L*sizeof(float*));
-        for (int i = 0 ; i < L; i++) {
-            randomMatrix[i] = (float*)malloc(N*sizeof(float));
-        }
+        
         // float randomMatrix[L][N];
         
         initialize_matrix(N, matrix, randomMatrix);
@@ -229,7 +233,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
 
         float av_energy = 0;
         // float total_energy2[N_AVERAGE];
-        float* total_energy2 = (float *)malloc((N_AVERAGE) * sizeof(float));
+        
         for (int i = 1 + N_EQUILIBRIUM; i < 1+N_EQUILIBRIUM+N_AVERAGE; i++) {
             total_energy2[i-(1+N_EQUILIBRIUM)] = total_energy[i];
         }
@@ -246,7 +250,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
 
         av_energy = total_energy2[0] / (N_AVERAGE);
         // float variance[N_AVERAGE];
-        float* variance = (float *)malloc((N_AVERAGE) * sizeof(float));
+        
         for (int i = 1+N_EQUILIBRIUM; i <  1+N_EQUILIBRIUM+N_AVERAGE; i++) {
             variance[i - (1+N_EQUILIBRIUM)] = (total_energy[i]-av_energy)*(total_energy[i]-av_energy);
         }
