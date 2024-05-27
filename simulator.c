@@ -149,13 +149,14 @@ void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, 
     
 // }
 
-void write_info(float total_energy[], int n, float total_energy_v, float variance) {
+void write_info(float total_energy[], float total_energy_v, float av_energy, float variance) {
     FILE *fptr = fopen("vetor.txt", "a");
-    for (int i = 0; i < n; i++) {
+    for (int i = 1+N_EQUILIBRIUM; i < 1+N_EQUILIBRIUM+N_AVERAGE; i++) {
         fprintf(fptr, "%f ", total_energy[i]);
     }
     fprintf(fptr, "\n");
     fprintf(fptr, "Energia total: %f\n", total_energy_v);
+    fprintf(fptr, "Energia médida: %f\n", av_energy);
     fprintf(fptr, "Variância: %f \n", variance);
 }
 
@@ -276,7 +277,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
 
         variance[0] = variance[0] / (N_AVERAGE);
         float specific_heat = variance[0] / (t*t*L*N);
-        write_info();
+        write_info(total_energy, total_energy2[0], av_energy, variance);
         write_values(filename, t, specific_heat);
         //TEMP : 1.5f -> specific_heat: 0.233231202
         //TEMP : 2.0f -> specific_heat: 0.868345141
