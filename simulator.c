@@ -157,8 +157,8 @@ void write_info(float total_energy[], float total_energy_v, float av_energy, flo
     fclose(fptr);
     fptr = fopen("detalhes.txt", "w");
     fprintf(fptr, "\n");
-    fprintf(fptr, "Energia total: %f\n", total_energy_v);
-    fprintf(fptr, "Energia médida: %f\n", av_energy);
+    fprintf(fptr, "Soma das energias de todas as iterações: %f\n", total_energy_v);
+    fprintf(fptr, "Energia média: %f\n", av_energy);
     fprintf(fptr, "Variância: %f \n", variance);
     fclose(fptr);
 }
