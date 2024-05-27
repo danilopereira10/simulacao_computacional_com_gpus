@@ -85,7 +85,7 @@ void initialize_total_energy(int d, float J0, float J1, float J2, int N, int** m
 
 // void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, int matrix[][N], float randomMatrix[][N]) {
 void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, int** matrix, float** randomMatrix) {
-    #pragma omp parallel for collapse(2)
+    //#pragma omp parallel for collapse(2)
     for (int i = 0; i < L; i++) {
         for (int j = (i+ color) % 3;j < N; j+=3) {
             int jless = (j - 1 >= 0) ? j - 1 : N -1;
@@ -277,7 +277,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
 
         variance[0] = variance[0] / (N_AVERAGE);
         float specific_heat = variance[0] / (t*t*L*N);
-        write_info(total_energy, total_energy2[0], av_energy, variance);
+        write_info(total_energy, total_energy2[0], av_energy, variance[0]);
         write_values(filename, t, specific_heat);
         //TEMP : 1.5f -> specific_heat: 0.233231202
         //TEMP : 2.0f -> specific_heat: 0.868345141
