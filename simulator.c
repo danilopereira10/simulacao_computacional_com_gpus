@@ -150,14 +150,17 @@ void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, 
 // }
 
 void write_info(float total_energy[], float total_energy_v, float av_energy, float variance) {
-    FILE *fptr = fopen("vetor.txt", "a");
+    FILE *fptr = fopen("energias.txt", "w");
     for (int i = 1+N_EQUILIBRIUM; i < 1+N_EQUILIBRIUM+N_AVERAGE; i++) {
-        fprintf(fptr, "%f ", total_energy[i]);
+        fprintf(fptr, "%f \n", total_energy[i]);
     }
+    fclose(fptr);
+    fptr = fopen("detalhes.txt", "w");
     fprintf(fptr, "\n");
     fprintf(fptr, "Energia total: %f\n", total_energy_v);
     fprintf(fptr, "Energia médida: %f\n", av_energy);
     fprintf(fptr, "Variância: %f \n", variance);
+    fclose(fptr);
 }
 
 void write_values(char* filename, float t, float sh) {
