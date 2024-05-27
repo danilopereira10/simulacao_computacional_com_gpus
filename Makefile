@@ -7,7 +7,7 @@
 LAB = simulator
 
 OBJECTS = $(patsubst %.c, %.o, $(wildcard *.c))
-GFLAGS  = -std=c99 -Wall -Werror
+GFLAGS  = -std=c99 -Wall -Werror -fopenmp
 
 build: $(OBJECTS)
 	gcc $(GFLAGS) *.o -o $(LAB) -lm -O3
