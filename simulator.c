@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
+#include <omp.h>
 
 
 #define L 176
@@ -16,8 +17,8 @@
 
 //float alpha = 0.1f;
 // #define TEMP 3.0f
-#define N_EQUILIBRIUM 20000
-#define N_AVERAGE 100000
+#define N_EQUILIBRIUM 1000
+#define N_AVERAGE 20000
 
 // float total_energy[N_EQUILIBRIUM +N_AVERAGE + 1];
 
@@ -84,9 +85,9 @@ void initialize_total_energy(int d, float J0, float J1, float J2, int N, int** m
 
 // void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, int matrix[][N], float randomMatrix[][N]) {
 void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, int** matrix, float** randomMatrix) {
+    #pragma omp parallel for collapse(2)
     for (int i = 0; i < L; i++) {
-        int j = (i+color) % 3;
-        for (;j < N; j+=3) {
+        for (int j = (i+ color) % 3;j < N; j+=3) {
             int jless = (j - 1 >= 0) ? j - 1 : N -1;
             int jplus = (j + 1 < N) ? j + 1 : 0;
             int iless = (i - 1 >= 0) ? i - 1 : L - 1;
@@ -147,6 +148,16 @@ void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, 
     
     
 // }
+
+void write_info(float total_energy[], int n, float total_energy_v, float variance) {
+    FILE *fptr = fopen("vetor.txt", "a");
+    for (int i = 0; i < n; i++) {
+        fprintf(fptr, "%f ", total_energy[i]);
+    }
+    fprintf(fptr, "\n");
+    fprintf(fptr, "Energia total: %f\n", total_energy_v);
+    fprintf(fptr, "Variância: %f \n", variance);
+}
 
 void write_values(char* filename, float t, float sh) {
     FILE *fptr3 = fopen(filename, "a");
@@ -265,6 +276,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
 
         variance[0] = variance[0] / (N_AVERAGE);
         float specific_heat = variance[0] / (t*t*L*N);
+        write_info();
         write_values(filename, t, specific_heat);
         //TEMP : 1.5f -> specific_heat: 0.233231202
         //TEMP : 2.0f -> specific_heat: 0.868345141
