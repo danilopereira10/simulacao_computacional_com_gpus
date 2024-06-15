@@ -410,7 +410,7 @@ int simulate(float alpha, float t, char* fileName, int ny, int niters) {
   double* devsum;
   int nchunks = (nx * ny + CUB_CHUNK_SIZE - 1)/ CUB_CHUNK_SIZE;
   CHECK_CUDA(cudaMalloc(&devsum,  nchunks * sizeof(*devsum)));
-  int cub_workspace_bytes = 0;
+  size_t cub_workspace_bytes = 0;
   void* workspace = NULL;
   CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, lattice, devsum, CUB_CHUNK_SIZE));
   CHECK_CUDA(cudaMalloc(&workspace, cub_workspace_bytes));
