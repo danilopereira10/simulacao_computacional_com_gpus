@@ -101,6 +101,7 @@ __global__ void update_lattice(enum Color color, signed char* lattice,
   const int j = tid % ny;
 
   if (i >= nx || j >= ny) return;
+  if ((j%3) != ((i+color)%3)) return;
 
   // Set stencil indices with periodicity
   int ipp = (i + 1 < nx) ? i + 1 : 0;
