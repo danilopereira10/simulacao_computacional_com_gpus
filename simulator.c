@@ -7,7 +7,7 @@
 #include <omp.h>
 
 
-#define L 176
+#define L 177
 // #define J0 1.0f
 // #define J1 0.0f
 // #define J2 -1.0f // Valor de alpha = 1, com J_0=1 (paper Selke 1981)
