@@ -235,12 +235,12 @@ void write_values(char* filename, float t, float sh) {
     fclose(fptr3);
 }
 
-int simulate(float alpha, float t, char* fileName, int ny, int niters) {
+int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, int niters) {
   // Defaults
-  long long nx = 5120;
+  // long long nx = 5120;
   // long long ny = 5120;
   // float alpha = 0.1f;
-  int nwarmup = 100;
+  // int nwarmup = 100;
   // int niters = 1000;
   bool write = false;
   unsigned long long seed = 1234ULL;
@@ -437,7 +437,9 @@ int main(int argc, char* argv[]) {
   float alpha = atof(argv[1]);
   float t = atof(argv[2]);
   char* fileName = argv[3];
-  int C = atoi(argv[4]);
-  int iterations = atoi(argv[5]);
-  simulate(alpha, t, fileName, C, iterations);
+  int R = atoi(argv[4]);
+  int C = atoi(argv[5]);
+  int nwarmup = atoi(argv[6]);
+  int niters = atoi(argv[7]);
+  simulate(alpha, t, fileName, R, C, nwarmup, niters);
 }
