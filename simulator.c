@@ -222,10 +222,13 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
         for (int i = 0; i < N_EQUILIBRIUM+N_AVERAGE; i++) {
             //write_matrix(fptr, fptr2, i); 
             flip_spins(BLACK, J0, J1, J2, t, N, matrix, randomMatrix);
-            flip_spins(WHITE, J0, J1, J2, t, N, matrix, randomMatrix);
-            flip_spins(GREEN, J0, J1, J2, t, N, matrix, randomMatrix);
-            initialize_total_energy(i+1, J0, J1, J2, N, matrix, total_energy);
             reinitialize_random_matrix(N, randomMatrix);
+            flip_spins(WHITE, J0, J1, J2, t, N, matrix, randomMatrix);
+            reinitialize_random_matrix(N, randomMatrix);
+            flip_spins(GREEN, J0, J1, J2, t, N, matrix, randomMatrix);
+            reinitialize_random_matrix(N, randomMatrix);
+            initialize_total_energy(i+1, J0, J1, J2, N, matrix, total_energy);
+            
         }
         // fclose(fptr);
         // fclose(fptr2);
