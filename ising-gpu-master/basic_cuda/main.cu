@@ -68,7 +68,7 @@ __global__ void init_spins(signed char* lattice,
 }
 
 __global__ void calculate_spin_energy(signed char* lattice,
-                                 signed float* spin_energy,
+                                 float* spin_energy,
                                   const long long nx,
                                   const long long ny,
                                   float j0, float j1, float j2) {
@@ -174,11 +174,11 @@ void update(signed char *lattice, float* randvals, curandGenerator_t rng, float 
 
   // Update black
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny));
-  update_lattice<true><<<blocks, THREADS>>>(lattice_b, lattice_w, randvals, inv_temp, nx, ny, j0, j1, j2);
+  update_lattice<true><<<blocks, THREADS>>>(lattice, randvals, inv_temp, nx, ny, j0, j1, j2);
 
   // Update white
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/2));
-  update_lattice<false><<<blocks, THREADS>>>(lattice_w, lattice_b, randvals, inv_temp, nx, ny);
+  update_lattice<false><<<blocks, THREADS>>>(lattice  , randvals, inv_temp, nx, ny, j0, j1, j2);
 }
 
 static void usage(const char *pname) {
@@ -214,18 +214,9 @@ static void usage(const char *pname) {
   exit(EXIT_SUCCESS);
 }
 
-int main(int argc, char* argv[]) {
-  float alpha = atof(argv[1]);
-  float t = atof(argv[2]);
-  char* fileName = argv[3];
-  int C = atoi(argv[4]);
-  int iterations = atoi(argv[5]);
-  simulate(alpha, t, fileName, C, iterations);
-}
-
-void write_info(float total_energy[], float total_energy_v, float av_energy, float variance) {
+void write_info(float total_energy[], float total_energy_v, float av_energy, float variance, int niters) {
     FILE *fptr = fopen("energias.txt", "w");
-    for (int i = 1+N_EQUILIBRIUM; i < 1+N_EQUILIBRIUM+N_AVERAGE; i++) {
+    for (int i = 0; i < niters; i++) {
         fprintf(fptr, "%f \n", total_energy[i]);
     }
     fclose(fptr);
@@ -388,7 +379,7 @@ int simulate(float alpha, float t, char* fileName, int ny, int niters) {
   
 
 
-  write_info(total_energy, av_energy * niters, av_energy, variance);
+  write_info(total_energy, av_energy * niters, av_energy, variance, niters);
   write_values(filename, t, specific_heat);
   end = clock();
   double time_taken = ((end-start)+0.0) / CLOCKS_PER_SEC;
@@ -436,4 +427,13 @@ int simulate(float alpha, float t, char* fileName, int ny, int niters) {
   // if (write) write_lattice(lattice_b, lattice_w, "final.txt", nx, ny);
 
   return 0;
+}
+
+int main(int argc, char* argv[]) {
+  float alpha = atof(argv[1]);
+  float t = atof(argv[2]);
+  char* fileName = argv[3];
+  int C = atoi(argv[4]);
+  int iterations = atoi(argv[5]);
+  simulate(alpha, t, fileName, C, iterations);
 }
