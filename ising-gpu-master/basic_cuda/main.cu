@@ -328,9 +328,10 @@ int simulate(float alpha, float t, char* fileName, int ny, int niters) {
   // Warmup iterations
   printf("Starting warmup...\n");
   for (int i = 0; i < nwarmup; i++) {
-    update(0, lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
-    update(1, lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
-    update(2, lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
+    Color color;
+    update(color=BLACK, lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
+    update(color=WHITE, lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
+    update(color=GREEN, lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
   }
 
   CHECK_CUDA(cudaDeviceSynchronize());
@@ -339,9 +340,10 @@ int simulate(float alpha, float t, char* fileName, int ny, int niters) {
   auto t0 = std::chrono::high_resolution_clock::now();
   float av_energy = 0;
   for (int i = 0; i < niters; i++) {
-    update(0, lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
-    update(1, lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
-    update(2, lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
+    Color color;
+    update(color=BLACK, lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
+    update(color=WHITE, lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
+    update(oolor=GREEN, lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
     calculate_spin_energy<<<blocks,THREADS>>>(lattice, spin_energy, nx, ny, j0, j1, j2);
 
     CHECK_CUDA(cudaDeviceSynchronize());
