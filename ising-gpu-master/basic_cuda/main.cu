@@ -294,8 +294,8 @@ int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, 
   // }
 
   // Check arguments
-  if (nx % 2 != 0 || ny % 2 != 0) {
-    fprintf(stderr, "ERROR: Lattice dimensions must be even values.\n");
+  if (nx % 3 != 0 || ny % 3 != 0) {
+    fprintf(stderr, "ERROR: Lattice dimensions must be multiple of 3.\n");
     exit(EXIT_FAILURE);
   }
 
