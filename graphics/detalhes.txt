@@ -1,4 +1,4 @@
 
-Soma das energias de todas as iterações: 0.000000
-Energia média: 0.000000
-Variância: 0.000000 
+Soma das energias de todas as iterações: -1147534.250000
+Energia média: -1147.534302
+Variância: 4588.465820 
