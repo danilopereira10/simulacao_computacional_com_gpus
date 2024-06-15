@@ -166,7 +166,7 @@ void write_lattice(signed char *lattice_b, signed char *lattice_w, std::string f
   free(lattice_w_h);
 }
 
-void update(signed char *lattice, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny
+void update(signed char *lattice, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny,
   float j0, float j1, float j2) {
 
   // Setup CUDA launch configuration
@@ -317,7 +317,7 @@ int simulate(float alpha, float t, char* fileName, int ny, int niters) {
 
   int blocks = (nx * ny + THREADS - 1) / THREADS;
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny));
-  init_spins<<<blocks, THREADS>>>(lattice, randvals, nx, ny, j0, j1, j2);
+  init_spins<<<blocks, THREADS>>>(lattice, randvals, nx, ny);
   // calculate_spin_energy<<<blocks, THREADS>>>(lattice, spin_energy, nx, ny, j0, j1, j2);
   float total_energy[niters];
 
@@ -348,17 +348,17 @@ int simulate(float alpha, float t, char* fileName, int ny, int niters) {
     void* workspace = NULL;
     CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, spin_energy, devsum, CUB_CHUNK_SIZE));
     CHECK_CUDA(cudaMalloc(&workspace, cub_workspace_bytes));
-    for (int i = 0; i < nchunks; i++) {
-      CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, &spin_energy[i*CUB_CHUNK_SIZE], devsum + i,
-                              std::min((long long) CUB_CHUNK_SIZE, nx * ny - i * CUB_CHUNK_SIZE)));
+    for (int j = 0; j < nchunks; j++) {
+      CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, &spin_energy[j*CUB_CHUNK_SIZE], devsum + j,
+                              std::min((long long) CUB_CHUNK_SIZE, nx * ny - j * CUB_CHUNK_SIZE)));
     }
 
     double* hostsum;
     hostsum = (double*)malloc(nchunks * sizeof(*hostsum));
     CHECK_CUDA(cudaMemcpy(hostsum, devsum, nchunks * sizeof(*devsum), cudaMemcpyDeviceToHost));
     double fullsum = 0.0;
-    for (int i = 0; i < nchunks; i++) {
-      fullsum += hostsum[i];
+    for (int j = 0; j < nchunks; j++) {
+      fullsum += hostsum[j];
     }
     
     CHECK_CUDA(cudaFree(devsum));
@@ -380,7 +380,7 @@ int simulate(float alpha, float t, char* fileName, int ny, int niters) {
 
 
   write_info(total_energy, av_energy * niters, av_energy, variance, niters);
-  write_values(filename, t, specific_heat);
+  write_values(fileName, t, specific_heat);
   end = clock();
   double time_taken = ((end-start)+0.0) / CLOCKS_PER_SEC;
 
