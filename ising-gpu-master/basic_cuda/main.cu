@@ -367,7 +367,7 @@ int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, 
     
     CHECK_CUDA(cudaFree(devsum));
     CHECK_CUDA(cudaFree(workspace));
-    CHECK_CUDA(cudaFree(hostsum));
+    // CHECK_CUDA(cudaFree(hostsum));
     total_energy[i] = fullsum;
     av_energy += fullsum;
     if (i % 1000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
