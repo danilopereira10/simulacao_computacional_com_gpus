@@ -13,11 +13,8 @@ nwarmup = "100"
 niters = "1000"
 for i in range (len(alpha)):
     t = t1[i]
-    t_end = t + 0.02
-    step = 0.0002
     while(t <= t2[i]):
         l = ["./ising_basic", str(alpha[i]), str(t), str(alpha[i])+".txt", "177", "12", nwarmup, niters]
-        subprocess.Popen(l, stdout=subprocess.PIPE)
+        subprocess.check_call(l, stdout=subprocess.PIPE)
         t += 0.02
-        t_end += 0.02
         j +=1
