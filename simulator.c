@@ -17,8 +17,8 @@
 
 //float alpha = 0.1f;
 // #define TEMP 3.0f
-#define N_EQUILIBRIUM 1000
-#define N_AVERAGE 20000
+#define N_EQUILIBRIUM 100
+#define N_AVERAGE 1000
 
 // float total_energy[N_EQUILIBRIUM +N_AVERAGE + 1];
 
@@ -85,7 +85,6 @@ void initialize_total_energy(int d, float J0, float J1, float J2, int N, int** m
 
 // void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, int matrix[][N], float randomMatrix[][N]) {
 void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, int** matrix, float** randomMatrix) {
-    #pragma omp parallel for
     for (int i = 0; i < L; i++) {
         for (int j = (i+ color) % 3;j < N; j+=3) {
             int jless = (j - 1 >= 0) ? j - 1 : N -1;
