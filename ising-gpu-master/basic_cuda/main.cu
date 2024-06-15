@@ -166,7 +166,7 @@ void write_lattice(signed char *lattice_b, signed char *lattice_w, std::string f
   free(lattice_w_h);
 }
 
-void update(signed char *lattice, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny,
+void update(enum Color color, signed char *lattice, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny,
   float j0, float j1, float j2) {
 
   // Setup CUDA launch configuration
@@ -174,11 +174,11 @@ void update(signed char *lattice, float* randvals, curandGenerator_t rng, float 
 
   // Update black
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny));
-  update_lattice<true><<<blocks, THREADS>>>(lattice, randvals, inv_temp, nx, ny, j0, j1, j2);
+  update_lattice<true><<<blocks, THREADS>>>(color, lattice, randvals, inv_temp, nx, ny, j0, j1, j2);
 
   // Update white
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny/2));
-  update_lattice<false><<<blocks, THREADS>>>(lattice  , randvals, inv_temp, nx, ny, j0, j1, j2);
+  update_lattice<false><<<blocks, THREADS>>>(color, lattice  , randvals, inv_temp, nx, ny, j0, j1, j2);
 }
 
 static void usage(const char *pname) {
@@ -328,7 +328,9 @@ int simulate(float alpha, float t, char* fileName, int ny, int niters) {
   // Warmup iterations
   printf("Starting warmup...\n");
   for (int i = 0; i < nwarmup; i++) {
-    update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
+    update(0, lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
+    update(1, lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
+    update(2, lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
   }
 
   CHECK_CUDA(cudaDeviceSynchronize());
@@ -337,7 +339,9 @@ int simulate(float alpha, float t, char* fileName, int ny, int niters) {
   auto t0 = std::chrono::high_resolution_clock::now();
   float av_energy = 0;
   for (int i = 0; i < niters; i++) {
-    update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
+    update(0, lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
+    update(1, lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
+    update(2, lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
     calculate_spin_energy<<<blocks,THREADS>>>(lattice, spin_energy, nx, ny, j0, j1, j2);
 
     CHECK_CUDA(cudaDeviceSynchronize());
