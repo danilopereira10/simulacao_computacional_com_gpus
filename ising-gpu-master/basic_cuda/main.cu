@@ -412,10 +412,11 @@ int simulate(float alpha, float t, char* fileName, int ny, int niters) {
   printf("\tupdates per ns: %f\n", (double) (nx * ny) * niters / duration * 1e-3);
 
   // Reduce
-  nchunks = (nx * ny + CUB_CHUNK_SIZE - 1)/ CUB_CHUNK_SIZE;
+  double* devsum;
+  int nchunks = (nx * ny + CUB_CHUNK_SIZE - 1)/ CUB_CHUNK_SIZE;
   CHECK_CUDA(cudaMalloc(&devsum,  nchunks * sizeof(*devsum)));
-  cub_workspace_bytes = 0;
-  workspace = NULL;
+  int cub_workspace_bytes = 0;
+  void* workspace = NULL;
   CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, lattice, devsum, CUB_CHUNK_SIZE));
   CHECK_CUDA(cudaMalloc(&workspace, cub_workspace_bytes));
   for (int i = 0; i < nchunks; i++) {
@@ -423,10 +424,10 @@ int simulate(float alpha, float t, char* fileName, int ny, int niters) {
                            std::min((long long) CUB_CHUNK_SIZE, nx * ny - i * CUB_CHUNK_SIZE)));
   }
 
-  hostsum;
+  double* hostsum;
   hostsum = (double*)malloc(nchunks * sizeof(*hostsum));
   CHECK_CUDA(cudaMemcpy(hostsum, devsum, nchunks * sizeof(*devsum), cudaMemcpyDeviceToHost));
-  fullsum = 0.0;
+  double fullsum = 0.0;
   for (int i = 0; i < nchunks; i++) {
     fullsum += hostsum[i];
   }
