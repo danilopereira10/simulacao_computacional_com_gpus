@@ -173,12 +173,12 @@ void update(signed char *lattice, float* randvals, curandGenerator_t rng, float 
 
   // Update black
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny));
-  update_lattice<<<blocks, THREADS>>>(color::BLACK, lattice, randvals, inv_temp, nx, ny, j0, j1, j2);
+  update_lattice<<<blocks, THREADS>>>(Color::BLACK, lattice, randvals, inv_temp, nx, ny, j0, j1, j2);
 
   // Update white
-  update_lattice<<<blocks, THREADS>>>(color::WHITE, lattice  , randvals, inv_temp, nx, ny, j0, j1, j2);
+  update_lattice<<<blocks, THREADS>>>(Color::WHITE, lattice  , randvals, inv_temp, nx, ny, j0, j1, j2);
 
-  update_lattice<<<blocks, THREADS>>>(color::GREEN, lattice  , randvals, inv_temp, nx, ny, j0, j1, j2);
+  update_lattice<<<blocks, THREADS>>>(Color::GREEN, lattice  , randvals, inv_temp, nx, ny, j0, j1, j2);
 }
 
 static void usage(const char *pname) {
