@@ -41,19 +41,6 @@
 
 enum Color {BLACK, WHITE, GREEN};
 
-// // Initialize lattice spins
-// __global__ void init_spins(signed char* lattice,
-//                            const float* __restrict__ randvals,
-//                            const long long nx,
-//                            const long long ny) {
-//   const long long  tid = static_cast<long long>(blockDim.x) * blockIdx.x + threadIdx.x;
-//   if (tid >= nx * ny) return;
-
-//   float randval = randvals[tid];
-//   signed char val = (randval < 0.5f) ? -1 : 1;
-//   lattice[tid] = val;
-// }
-
 // Initialize lattice spins
 __global__ void init_spins(signed char* lattice,
                            const float* __restrict__ randvals,
@@ -61,9 +48,6 @@ __global__ void init_spins(signed char* lattice,
                            const long long ny) {
   const long long  tid = static_cast<long long>(blockDim.x) * blockIdx.x + threadIdx.x;
   if (tid >= nx * ny) return;
-
-  // float randval = randvals[tid];
-  // signed char val = (randval < 0.5f) ? -1 : 1;
   lattice[tid] = 1;
 }
 
@@ -125,46 +109,6 @@ __global__ void update_lattice(enum Color color, signed char* lattice,
   }
 }
 
-// Write lattice configuration to file
-void write_lattice(signed char *lattice_b, signed char *lattice_w, std::string filename, long long nx, long long ny) {
-  printf("Writing lattice to %s...\n", filename.c_str());
-  signed char *lattice_h, *lattice_b_h, *lattice_w_h;
-  lattice_h = (signed char*) malloc(nx * ny * sizeof(*lattice_h));
-  lattice_b_h = (signed char*) malloc(nx * ny/2 * sizeof(*lattice_b_h));
-  lattice_w_h = (signed char*) malloc(nx * ny/2 * sizeof(*lattice_w_h));
-
-  CHECK_CUDA(cudaMemcpy(lattice_b_h, lattice_b, nx * ny/2 * sizeof(*lattice_b), cudaMemcpyDeviceToHost));
-  CHECK_CUDA(cudaMemcpy(lattice_w_h, lattice_b, nx * ny/2 * sizeof(*lattice_w), cudaMemcpyDeviceToHost));
-
-  for (int i = 0; i < nx; i++) {
-    for (int j = 0; j < ny/2; j++) {
-      if (i % 2) {
-        lattice_h[i*ny + 2*j+1] = lattice_b_h[i*ny/2 + j];
-        lattice_h[i*ny + 2*j] = lattice_w_h[i*ny/2 + j];
-      } else {
-        lattice_h[i*ny + 2*j] = lattice_b_h[i*ny/2 + j];
-        lattice_h[i*ny + 2*j+1] = lattice_w_h[i*ny/2 + j];
-      }
-    }
-  }
-
-  std::ofstream f;
-  f.open(filename);
-  if (f.is_open()) {
-    for (int i = 0; i < nx; i++) {
-      for (int j = 0; j < ny; j++) {
-         f << (int)lattice_h[i * ny + j] << " ";
-      }
-      f << std::endl;
-    }
-  }
-  f.close();
-
-  free(lattice_h);
-  free(lattice_b_h);
-  free(lattice_w_h);
-}
-
 void update(signed char *lattice, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny,
   float j0, float j1, float j2) {
 
@@ -179,39 +123,6 @@ void update(signed char *lattice, float* randvals, curandGenerator_t rng, float 
   update_lattice<<<blocks, THREADS>>>(Color::WHITE, lattice  , randvals, inv_temp, nx, ny, j0, j1, j2);
 
   update_lattice<<<blocks, THREADS>>>(Color::GREEN, lattice  , randvals, inv_temp, nx, ny, j0, j1, j2);
-}
-
-static void usage(const char *pname) {
-
-  const char *bname = rindex(pname, '/');
-  if (!bname) {bname = pname;}
-  else        {bname++;}
-
-  fprintf(stdout,
-          "Usage: %s [options]\n"
-          "options:\n"
-          "\t-x|--lattice-n <LATTICE_N>\n"
-          "\t\tnumber of lattice rows\n"
-          "\n"
-          "\t-y|--lattice_m <LATTICE_M>\n"
-          "\t\tnumber of lattice columns\n"
-          "\n"
-          "\t-w|--nwarmup <NWARMUP>\n"
-          "\t\tnumber of warmup iterations\n"
-          "\n"
-          "\t-n|--niters <NITERS>\n"
-          "\t\tnumber of trial iterations\n"
-          "\n"
-          "\t-a|--alpha <ALPHA>\n"
-          "\t\tcoefficient of critical temperature\n"
-          "\n"
-          "\t-s|--seed <SEED>\n"
-          "\t\tseed for random number generation\n"
-          "\n"
-          "\t-o|--write-lattice\n"
-          "\t\twrite final lattice configuration to file\n\n",
-          bname);
-  exit(EXIT_SUCCESS);
 }
 
 void write_info(float total_energy[], float total_energy_v, float av_energy, float variance, int niters) {
@@ -249,57 +160,12 @@ int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, 
   j1 = (1-alpha)*j0;
   j2 = -alpha*j0;
 
-  // while (1) {
-  //   static struct option long_options[] = {
-  //       {     "lattice-n", required_argument, 0, 'x'},
-  //       {     "lattice-m", required_argument, 0, 'y'},
-  //       {         "alpha", required_argument, 0, 'y'},
-  //       {          "seed", required_argument, 0, 's'},
-  //       {       "nwarmup", required_argument, 0, 'w'},
-  //       {        "niters", required_argument, 0, 'n'},
-  //       { "write-lattice",       no_argument, 0, 'o'},
-  //       {          "help",       no_argument, 0, 'h'},
-  //       {               0,                 0, 0,   0}
-  //   };
-
-  //   int option_index = 0;
-  //   int ch = getopt_long(argc, argv, "x:y:a:s:w:n:oh", long_options, &option_index);
-  //   if (ch == -1) break;
-
-  //   switch(ch) {
-  //     case 0:
-  //       break;
-  //     case 'x':
-  //       nx = atoll(optarg); break;
-  //     case 'y':
-  //       ny = atoll(optarg); break;
-  //     case 'a':
-  //       alpha = atof(optarg); break;
-  //     case 's':
-  //       seed = atoll(optarg); break;
-  //     case 'w':
-  //       nwarmup = atoi(optarg); break;
-  //     case 'n':
-  //       niters = atoi(optarg); break;
-  //     case 'o':
-  //       write = true; break;
-  //     case 'h':
-  //       usage(argv[0]); break;
-  //     case '?':
-  //       exit(EXIT_FAILURE);
-  //     default:
-  //       fprintf(stderr, "unknown option: %c\n", ch);
-  //       exit(EXIT_FAILURE);
-  //   }
-  // }
-
   // Check arguments
   if (nx % 3 != 0 || ny % 3 != 0) {
     fprintf(stderr, "ERROR: Lattice dimensions must be multiple of 3.\n");
     exit(EXIT_FAILURE);
   }
 
-  // float inv_temp = 1.0f / (alpha*TCRIT);
   float inv_temp = 1.0f / t;
 
   // Setup cuRAND generator
@@ -318,11 +184,8 @@ int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, 
   int blocks = (nx * ny + THREADS - 1) / THREADS;
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny));
   init_spins<<<blocks, THREADS>>>(lattice, randvals, nx, ny);
-  // calculate_spin_energy<<<blocks, THREADS>>>(lattice, spin_energy, nx, ny, j0, j1, j2);
   float total_energy[niters];
 
-  // float* squareOfDistanceToMean;
-  // CHECK_CUDA(cudaMalloc(&squareOfDistanceToMean, niters*sizeof(float)));
   clock_t start, end;
   start = clock();
   // Warmup iterations
@@ -367,7 +230,7 @@ int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, 
     
     CHECK_CUDA(cudaFree(devsum));
     CHECK_CUDA(cudaFree(workspace));
-    // CHECK_CUDA(cudaFree(hostsum));
+    CHECK_CUDA(cudaFree(hostsum));
     total_energy[i] = fullsum;
     av_energy += fullsum;
     if (i % 1000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
@@ -379,9 +242,6 @@ int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, 
   }
   variance /= niters;
   float specific_heat = variance / (t*t*nx*ny);
-
-  
-
 
   write_info(total_energy, av_energy * niters, av_energy, variance, niters);
   write_values(fileName, t, specific_heat);
@@ -397,14 +257,14 @@ int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, 
 
   double duration = (double) std::chrono::duration_cast<std::chrono::microseconds>(t1-t0).count();
   printf("REPORT:\n");
-  printf("\tnGPUs: %d\n", 1);
-  printf("\ttemperature: %f * %f\n", alpha, TCRIT);
-  printf("\tseed: %llu\n", seed);
+  // printf("\tnGPUs: %d\n", 1);
+  printf("\ttemperature: %f * %f\n", alpha, t);
+  // printf("\tseed: %llu\n", seed);
   printf("\twarmup iterations: %d\n", nwarmup);
   printf("\ttrial iterations: %d\n", niters);
   printf("\tlattice dimensions: %lld x %lld\n", nx, ny);
   printf("\telapsed time: %f sec\n", duration * 1e-6);
-  printf("\tupdates per ns: %f\n", (double) (nx * ny) * niters / duration * 1e-3);
+  // printf("\tupdates per ns: %f\n", (double) (nx * ny) * niters / duration * 1e-3);
 
   // Reduce
   double* devsum;
@@ -427,8 +287,6 @@ int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, 
     fullsum += hostsum[i];
   }
   std::cout << "\taverage magnetism (absolute): " << abs(fullsum / (nx * ny)) << std::endl;
-
-  // if (write) write_lattice(lattice_b, lattice_w, "final.txt", nx, ny);
 
   return 0;
 }
