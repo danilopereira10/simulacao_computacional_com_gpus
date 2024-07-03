@@ -6,55 +6,54 @@
 #include <string.h>
 #include <omp.h>
 
-#define L 177
 #define N_EQUILIBRIUM 100
 #define N_AVERAGE 1000
 
 enum Color {BLACK, WHITE, GREEN};
 
-void initialize_matrix(int N, int** matrix, float** randomMatrix) {
-    for (int i = 0; i < L; i++) {
-        for (int j = 0; j < N; j++) {
+void initialize_matrix(int R, int C, int** matrix, float** randomMatrix) {
+    for (int i = 0; i < R; i++) {
+        for (int j = 0; j < C; j++) {
             matrix[i][j] = 1;
             randomMatrix[i][j] = ((float) (rand() / (float)(RAND_MAX)));
         }
     }
 }
 
-void reinitialize_random_matrix(int N, float** randomMatrix) {
-    for (int i = 0; i < L; i++) {
-        for (int j = 0; j < N; j++) {
+void reinitialize_random_matrix(int R, int C, float** randomMatrix) {
+    for (int i = 0; i < R; i++) {
+        for (int j = 0; j < C; j++) {
             randomMatrix[i][j] = ((float) ((rand()) /(float)(RAND_MAX)));
         }
     }
 }
 
-void initialize_total_energy(int d, float J0, float J1, float J2, int N, int** matrix, float* total_energy) {
+void initialize_total_energy(int d, float J0, float J1, float J2, int R, int C, int** matrix, float* total_energy) {
     float sum = 0.0;
     total_energy[d] = 0.0;
-    for (int i = 0; i < L; i++) {
-        for (int j = 0; j < N; j++) {   
-            int jless = (j - 1 >= 0) ? j - 1 : N -1;
-            int jplus = (j + 1 < N) ? j + 1 : 0;
-            int iless = (i - 1 >= 0) ? i - 1 : L - 1;
-            int iplus = (i + 1 < L) ? i + 1 : 0;
-            int iplus2 = ((i+2  ) < L) ? i+2 : i+2-L;
-            int iless2 = ((i-2) > -1) ? i - 2 : i - 2 + L;
+    for (int i = 0; i < R; i++) {
+        for (int j = 0; j < C; j++) {   
+            int jless = (j - 1 >= 0) ? j - 1 : C -1;
+            int jplus = (j + 1 < C) ? j + 1 : 0;
+            int iless = (i - 1 >= 0) ? i - 1 : R - 1;
+            int iplus = (i + 1 < R) ? i + 1 : 0;
+            int iplus2 = ((i+2  ) < R) ? i+2 : i+2-R;
+            int iless2 = ((i-2) > -1) ? i - 2 : i - 2 + R;
             sum += -1.0 * matrix[i][j]*(J1*(matrix[iplus][j]+matrix[iless][j])+J2*(matrix[iless2][j] +matrix[iplus2][j]) + J0*(matrix[i][jless] + matrix[i][jplus]));
         }
     }
     total_energy[d] = sum / 2;
 }
 
-void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, int** matrix, float** randomMatrix) {
-    for (int i = 0; i < L; i++) {
-        for (int j = (i+ color) % 3;j < N; j+=3) {
-            int jless = (j - 1 >= 0) ? j - 1 : N -1;
-            int jplus = (j + 1 < N) ? j + 1 : 0;
-            int iless = (i - 1 >= 0) ? i - 1 : L - 1;
-            int iplus = (i + 1 < L) ? i + 1 : 0;
-            int iplus2 = ((i+2) < L) ? i+2 : i+2-L;
-            int iless2 = ((i-2) > -1) ? i - 2 : i - 2 + L;
+void flip_spins(enum Color color, float J0, float J1, float J2, float t, int R, int C, int** matrix, float** randomMatrix) {
+    for (int i = 0; i < R; i++) {
+        for (int j = (i+ color) % 3;j < C; j+=3) {
+            int jless = (j - 1 >= 0) ? j - 1 : C -1;
+            int jplus = (j + 1 < C) ? j + 1 : 0;
+            int iless = (i - 1 >= 0) ? i - 1 : R - 1;
+            int iplus = (i + 1 < R) ? i + 1 : 0;
+            int iplus2 = ((i+2) < R) ? i+2 : i+2-R;
+            int iless2 = ((i-2) > -1) ? i - 2 : i - 2 + R;
             
             float sum = J1*(matrix[iplus][j]+matrix[iless][j])+J2*(matrix[iless2][j] +matrix[iplus2][j]) + J0*(matrix[i][jless] + matrix[i][jplus]);
             int mij = matrix[i][j];
@@ -88,95 +87,94 @@ void write_values(char* filename, float t, float sh) {
     fclose(fptr3);
 }
 
-int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
+int runc(float alpha, float t, char* filename, int R, int C, int nwarmup, int niters) {
     float* total_energy = (float *)malloc((N_EQUILIBRIUM +N_AVERAGE + 1) * sizeof(float));
-    int **matrix = (int **)malloc(L*sizeof(int*));
-    for (int i = 0; i < L; i++) {
-        matrix[i] = (int*)malloc(N * sizeof(int));
+    int **matrix = (int **)malloc(R*sizeof(int*));
+    for (int i = 0; i < R; i++) {
+        matrix[i] = (int*)malloc(C * sizeof(int));
     }
-    float **randomMatrix = (float**) malloc(L*sizeof(float*));
-    for (int i = 0 ; i < L; i++) {
-        randomMatrix[i] = (float*)malloc(N*sizeof(float));
+    float **randomMatrix = (float**) malloc(R*sizeof(float*));
+    for (int i = 0 ; i < R; i++) {
+        randomMatrix[i] = (float*)malloc(C*sizeof(float));
     }
     float* total_energy2 = (float *)malloc((N_AVERAGE) * sizeof(float));
     float* squareOfDistanceFromMean = (float *)malloc((N_AVERAGE) * sizeof(float));
     
-    while (t < t_end) {
-        srand((unsigned) time(NULL));
-        clock_t start, end;
+   
+    srand((unsigned) time(NULL));
+    clock_t start, end;
+
+    /* Recording the starting clock tick.*/
+    start = clock(); 
+
+    float J0 = 1.0;
+    float J1 = (1-alpha)* J0;
+    float J2 = -alpha*J0;
+
+    initialize_matrix(R, C, matrix, randomMatrix);
+    initialize_total_energy(0, J0, J1, J2, R, C, matrix, total_energy);
     
-        /* Recording the starting clock tick.*/
-        start = clock(); 
-    
-        float J0 = 1.0;
-        float J1 = (1-alpha)* J0;
-        float J2 = -alpha*J0;
-
-        initialize_matrix(N, matrix, randomMatrix);
-        initialize_total_energy(0, J0, J1, J2, N, matrix, total_energy);
-        
-        for (int i = 0; i < N_EQUILIBRIUM+N_AVERAGE; i++) {
-            flip_spins(BLACK, J0, J1, J2, t, N, matrix, randomMatrix);
-            reinitialize_random_matrix(N, randomMatrix);
-            flip_spins(WHITE, J0, J1, J2, t, N, matrix, randomMatrix);
-            reinitialize_random_matrix(N, randomMatrix);
-            flip_spins(GREEN, J0, J1, J2, t, N, matrix, randomMatrix);
-            reinitialize_random_matrix(N, randomMatrix);
-            initialize_total_energy(i+1, J0, J1, J2, N, matrix, total_energy);
-        }
-    
-        for (int i = 1 + N_EQUILIBRIUM; i < 1+N_EQUILIBRIUM+N_AVERAGE; i++) {
-            total_energy2[i-(1+N_EQUILIBRIUM)] = total_energy[i];
-        }
-
-        int p = 1; 
-        while (p < N_AVERAGE) {
-            for (int i = 0; i+p < N_AVERAGE; i+= 2*p) {
-                total_energy2[i] = total_energy2[i] + total_energy2[i+p];
-            }
-            p *= 2;
-        }
-        float av_energy = total_energy2[0] / (N_AVERAGE);
-        
-        for (int i = 1+N_EQUILIBRIUM; i <  1+N_EQUILIBRIUM+N_AVERAGE; i++) {
-            squareOfDistanceFromMean[i - (1+N_EQUILIBRIUM)] = (total_energy[i]-av_energy)*(total_energy[i]-av_energy);
-        }
-
-        p = 1;
-        while (p < N_AVERAGE) {
-            for (int i = 0; i+p < N_AVERAGE; i+= 2*p) {
-                squareOfDistanceFromMean[i] = squareOfDistanceFromMean[i] + squareOfDistanceFromMean[i+p];
-            }
-            p *= 2;
-        }
-        squareOfDistanceFromMean[0] = squareOfDistanceFromMean[0] / (N_AVERAGE);
-
-        float specific_heat = squareOfDistanceFromMean[0] / (t*t*L*N);
-        write_info(total_energy, total_energy2[0], av_energy, squareOfDistanceFromMean[0]);
-        write_values(filename, t, specific_heat);
-        
-        end = clock();
-
-        double time_taken = ((end - start)+0.0) / (CLOCKS_PER_SEC); 
-        printf("The program took %f seconds to execute", time_taken);
-        
-        FILE *fptr4 = fopen("time_taken.txt", "a");
-        fprintf(fptr4, "%f, %f ", t,  specific_heat);
-        fprintf(fptr4, "%f sec", time_taken);
-        fprintf(fptr4, "\n");
-        fclose(fptr4);
-        
-        t += step;
+    for (int i = 0; i < N_EQUILIBRIUM+N_AVERAGE; i++) {
+        flip_spins(BLACK, J0, J1, J2, t, R, C, matrix, randomMatrix);
+        reinitialize_random_matrix(R, C, randomMatrix);
+        flip_spins(WHITE, J0, J1, J2, t, R, C, matrix, randomMatrix);
+        reinitialize_random_matrix(R, C, randomMatrix);
+        flip_spins(GREEN, J0, J1, J2, t, R, C, matrix, randomMatrix);
+        reinitialize_random_matrix(R, C, randomMatrix);
+        initialize_total_energy(i+1, J0, J1, J2, R, C, matrix, total_energy);
     }
+
+    for (int i = 1 + N_EQUILIBRIUM; i < 1+N_EQUILIBRIUM+N_AVERAGE; i++) {
+        total_energy2[i-(1+N_EQUILIBRIUM)] = total_energy[i];
+    }
+
+    int p = 1; 
+    while (p < N_AVERAGE) {
+        for (int i = 0; i+p < N_AVERAGE; i+= 2*p) {
+            total_energy2[i] = total_energy2[i] + total_energy2[i+p];
+        }
+        p *= 2;
+    }
+    float av_energy = total_energy2[0] / (N_AVERAGE);
+    
+    for (int i = 1+N_EQUILIBRIUM; i <  1+N_EQUILIBRIUM+N_AVERAGE; i++) {
+        squareOfDistanceFromMean[i - (1+N_EQUILIBRIUM)] = (total_energy[i]-av_energy)*(total_energy[i]-av_energy);
+    }
+
+    p = 1;
+    while (p < N_AVERAGE) {
+        for (int i = 0; i+p < N_AVERAGE; i+= 2*p) {
+            squareOfDistanceFromMean[i] = squareOfDistanceFromMean[i] + squareOfDistanceFromMean[i+p];
+        }
+        p *= 2;
+    }
+    squareOfDistanceFromMean[0] = squareOfDistanceFromMean[0] / (N_AVERAGE);
+
+    float specific_heat = squareOfDistanceFromMean[0] / (t*t*R*C);
+    write_info(total_energy, total_energy2[0], av_energy, squareOfDistanceFromMean[0]);
+    write_values(filename, t, specific_heat);
+    
+    end = clock();
+
+    double time_taken = ((end - start)+0.0) / (CLOCKS_PER_SEC); 
+    printf("The program took %f seconds to execute", time_taken);
+    
+    FILE *fptr4 = fopen("time_taken.txt", "a");
+    fprintf(fptr4, "%f, %f ", t,  specific_heat);
+    fprintf(fptr4, "%f sec", time_taken);
+    fprintf(fptr4, "\n");
+    fclose(fptr4);
+    
     return 0;
 }
 
 int main(int argc, char* argv[]) {
     float alpha = atof(argv[1]);
     float t = atof(argv[2]);
-    float t_end = atof(argv[3]);
-    float step = atof(argv[4]);
-    char* fileName = argv[5];
-    int N = atoi(argv[6]);
-    runc(alpha, t, t_end, step, fileName, N);
+    char* fileName = argv[3];
+    int R = atoi(argv[4]);
+    int C = atoi(argv[5]);
+    int nwarmup = atoi(argv[6]);
+    int niters = atoi(argv[7]);
+    runc(alpha, t, fileName, R,C,nwarmup, niters);
 }
