@@ -192,8 +192,8 @@ int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, 
   printf("Starting warmup...\n");
   for (int i = 0; i < nwarmup; i++) {
     update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
-    update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
-    update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
+    // update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
+    // update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
   }
 
   CHECK_CUDA(cudaDeviceSynchronize());
@@ -203,8 +203,8 @@ int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, 
   float av_energy = 0;
   for (int i = 0; i < niters; i++) {
     update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
-    update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
-    update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
+    // update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
+    // update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
     calculate_spin_energy<<<blocks,THREADS>>>(lattice, spin_energy, nx, ny, j0, j1, j2);
 
     CHECK_CUDA(cudaDeviceSynchronize());
@@ -257,14 +257,14 @@ int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, 
 
   double duration = (double) std::chrono::duration_cast<std::chrono::microseconds>(t1-t0).count();
   printf("REPORT:\n");
-  // printf("\tnGPUs: %d\n", 1);
+  printf("\tnGPUs: %d\n", 1);
   printf("\ttemperature: %f * %f\n", alpha, t);
-  // printf("\tseed: %llu\n", seed);
+  printf("\tseed: %llu\n", seed);
   printf("\twarmup iterations: %d\n", nwarmup);
   printf("\ttrial iterations: %d\n", niters);
   printf("\tlattice dimensions: %lld x %lld\n", nx, ny);
   printf("\telapsed time: %f sec\n", duration * 1e-6);
-  // printf("\tupdates per ns: %f\n", (double) (nx * ny) * niters / duration * 1e-3);
+  printf("\tupdates per ns: %f\n", (double) (nx * ny) * niters / duration * 1e-3);
 
   // Reduce
   double* devsum;
