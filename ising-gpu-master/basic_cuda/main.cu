@@ -1,133 +1,75 @@
-/*
- * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"),
- * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
- * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
- * DEALINGS IN THE SOFTWARE.
- */
-
-#include <chrono>
-#include <fstream>
-#include <getopt.h>
-#include <iostream>
-#include <string>
+#include <limits.h>
 #include <time.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
+#include <string.h>
+#include <omp.h>
 
-#include <cuda_fp16.h>
-#include <curand.h>
-#include <cublas_v2.h>
-
-#include <cub/cub.cuh>
-#define CUB_CHUNK_SIZE ((1ll<<31) - (1ll<<28))
-
-#include "cudamacro.h"
-
-#define TCRIT 2.26918531421f
-#define THREADS  128
+#define L 177
+#define N_EQUILIBRIUM 100
+#define N_AVERAGE 1000
 
 enum Color {BLACK, WHITE, GREEN};
 
-// Initialize lattice spins
-__global__ void init_spins(signed char* lattice,
-                           const float* __restrict__ randvals,
-                           const long long nx,
-                           const long long ny) {
-  const long long  tid = static_cast<long long>(blockDim.x) * blockIdx.x + threadIdx.x;
-  if (tid >= nx * ny) return;
-  lattice[tid] = 1;
+void initialize_matrix(int N, int** matrix, float** randomMatrix) {
+    for (int i = 0; i < L; i++) {
+        for (int j = 0; j < N; j++) {
+            matrix[i][j] = 1;
+            randomMatrix[i][j] = ((float) (rand() / (float)(RAND_MAX)));
+        }
+    }
 }
 
-__global__ void calculate_spin_energy(signed char* lattice,
-                                 float* spin_energy,
-                                  const long long nx,
-                                  const long long ny,
-                                  float j0, float j1, float j2) {
-  const long long tid = static_cast<long long>(blockDim.x) * blockIdx.x + threadIdx.x;
-  const int i = tid / ny;
-  const int j = tid % ny;
-
-  if (i >= nx || j >= ny) return;
-
-
-  int ipp = (i + 1 < nx) ? i + 1 : 0;
-  int inn = (i - 1 >= 0) ? i - 1: nx - 1;
-  int jpp = (j + 1 < ny) ? j + 1 : 0;
-  int jnn = (j - 1 >= 0) ? j - 1: ny - 1;
-  int jp2 = (j + 2 < ny) ? j + 2 : j + 2 - ny;
-  int jm2 = (j - 2 >= 0) ? j - 2 : j - 2 + ny;
-
-  spin_energy[i*ny+j] = (-lattice[i*ny+j]) * (j0 * (lattice[inn*ny+j] + lattice[ipp*ny+j]) + j1*(lattice[i*ny+jpp] + lattice[i*ny+jnn])
-      + j2 * (lattice[i*ny+jp2] + lattice[i*ny+jm2]));
+void reinitialize_random_matrix(int N, float** randomMatrix) {
+    for (int i = 0; i < L; i++) {
+        for (int j = 0; j < N; j++) {
+            randomMatrix[i][j] = ((float) ((rand()) /(float)(RAND_MAX)));
+        }
+    }
 }
 
-__global__ void update_lattice(enum Color color, signed char* lattice,
-                               const float* __restrict__ randvals,
-                               const float inv_temp,
-                               const long long nx,
-                               const long long ny, float j0, float j1, float j2) {
-  const long long tid = static_cast<long long>(blockDim.x) * blockIdx.x + threadIdx.x;
-  const int i = tid / ny;
-  const int j = tid % ny;
-
-  if (i >= nx || j >= ny) return;
-  if ((j%3) != ((i+color)%3)) return;
-
-  // Set stencil indices with periodicity
-  int ipp = (i + 1 < nx) ? i + 1 : 0;
-  int inn = (i - 1 >= 0) ? i - 1: nx - 1;
-  int jpp = (j + 1 < ny) ? j + 1 : 0;
-  int jnn = (j - 1 >= 0) ? j - 1: ny - 1;
-  int jp2 = (j + 2 < ny) ? j + 2 : j + 2 - ny;
-  int jm2 = ((j - 2) >= 0) ? j - 2 : j-2 + ny;
-  
-
-  // Compute sum of nearest neighbor spins
-  float nn_sum = j0 * (lattice[inn*ny+j] + lattice[ipp*ny+j]) + j1*(lattice[i*ny+jpp] + lattice[i*ny+jnn])
-      + j2 * (lattice[i*ny+jp2] + lattice[i*ny+jm2]);
-  
-  
-
-  // Determine whether to flip spin
-  signed char lij = lattice[i * ny + j];
-  float acceptance_ratio = exp(-2.0f * inv_temp * nn_sum * lij);
-  if (randvals[i*ny + j] < acceptance_ratio) {
-    lattice[i * ny + j] = -lij;
-  }
+void initialize_total_energy(int d, float J0, float J1, float J2, int N, int** matrix, float* total_energy) {
+    float sum = 0.0;
+    total_energy[d] = 0.0;
+    for (int i = 0; i < L; i++) {
+        for (int j = 0; j < N; j++) {   
+            int jless = (j - 1 >= 0) ? j - 1 : N -1;
+            int jplus = (j + 1 < N) ? j + 1 : 0;
+            int iless = (i - 1 >= 0) ? i - 1 : L - 1;
+            int iplus = (i + 1 < L) ? i + 1 : 0;
+            int iplus2 = ((i+2  ) < L) ? i+2 : i+2-L;
+            int iless2 = ((i-2) > -1) ? i - 2 : i - 2 + L;
+            sum += -1.0 * matrix[i][j]*(J1*(matrix[iplus][j]+matrix[iless][j])+J2*(matrix[iless2][j] +matrix[iplus2][j]) + J0*(matrix[i][jless] + matrix[i][jplus]));
+        }
+    }
+    total_energy[d] = sum / 2;
 }
 
-void update(signed char *lattice, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny,
-  float j0, float j1, float j2) {
-
-  // Setup CUDA launch configuration
-  int blocks = (nx * ny + THREADS - 1) / THREADS;
-
-  // Update black
-  CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny));
-  update_lattice<<<blocks, THREADS>>>(Color::BLACK, lattice, randvals, inv_temp, nx, ny, j0, j1, j2);
-
-  // Update white
-  update_lattice<<<blocks, THREADS>>>(Color::WHITE, lattice  , randvals, inv_temp, nx, ny, j0, j1, j2);
-
-  update_lattice<<<blocks, THREADS>>>(Color::GREEN, lattice  , randvals, inv_temp, nx, ny, j0, j1, j2);
+void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, int** matrix, float** randomMatrix) {
+    for (int i = 0; i < L; i++) {
+        for (int j = (i+ color) % 3;j < N; j+=3) {
+            int jless = (j - 1 >= 0) ? j - 1 : N -1;
+            int jplus = (j + 1 < N) ? j + 1 : 0;
+            int iless = (i - 1 >= 0) ? i - 1 : L - 1;
+            int iplus = (i + 1 < L) ? i + 1 : 0;
+            int iplus2 = ((i+2) < L) ? i+2 : i+2-L;
+            int iless2 = ((i-2) > -1) ? i - 2 : i - 2 + L;
+            
+            float sum = J1*(matrix[iplus][j]+matrix[iless][j])+J2*(matrix[iless2][j] +matrix[iplus2][j]) + J0*(matrix[i][jless] + matrix[i][jplus]);
+            int mij = matrix[i][j];
+            float acceptance_ratio = exp(-2.0f * sum * mij / t);
+        
+            if (randomMatrix[i][j] < acceptance_ratio) {
+                matrix[i][j] = -mij;
+		    }
+        }
+    }
 }
 
-void write_info(float total_energy[], float total_energy_v, float av_energy, float variance, int niters) {
+void write_info(float total_energy[], float total_energy_v, float av_energy, float variance) {
     FILE *fptr = fopen("energias.txt", "w");
-    for (int i = 0; i < niters; i++) {
+    for (int i = 1+N_EQUILIBRIUM; i < 1+N_EQUILIBRIUM+N_AVERAGE; i++) {
         fprintf(fptr, "%f \n", total_energy[i]);
     }
     fclose(fptr);
@@ -146,158 +88,95 @@ void write_values(char* filename, float t, float sh) {
     fclose(fptr3);
 }
 
-int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, int niters) {
-  // Defaults
-  // long long nx = 5120;
-  // long long ny = 5120;
-  // float alpha = 0.1f;
-  // int nwarmup = 100;
-  // int niters = 1000;
-  bool write = false;
-  unsigned long long seed = 1234ULL;
-  float j0, j1, j2;
-  j0 = 1.0;
-  j1 = (1-alpha)*j0;
-  j2 = -alpha*j0;
-
-  // Check arguments
-  if (nx % 3 != 0 || ny % 3 != 0) {
-    fprintf(stderr, "ERROR: Lattice dimensions must be multiple of 3.\n");
-    exit(EXIT_FAILURE);
-  }
-
-  float inv_temp = 1.0f / t;
-
-  // Setup cuRAND generator
-  curandGenerator_t rng;
-  CHECK_CURAND(curandCreateGenerator(&rng, CURAND_RNG_PSEUDO_PHILOX4_32_10));
-  CHECK_CURAND(curandSetPseudoRandomGeneratorSeed(rng, seed));
-  float *randvals;
-  CHECK_CUDA(cudaMalloc(&randvals, nx * ny * sizeof(*randvals)));
-
-  // Setup black and white lattice arrays on device
-  signed char *lattice;
-  float *spin_energy;
-  CHECK_CUDA(cudaMalloc(&spin_energy, nx*ny * sizeof(*spin_energy)));
-  CHECK_CUDA(cudaMalloc(&lattice, nx * ny * sizeof(*lattice)));
-
-  int blocks = (nx * ny + THREADS - 1) / THREADS;
-  CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny));
-  init_spins<<<blocks, THREADS>>>(lattice, randvals, nx, ny);
-  float total_energy[niters];
-
-  clock_t start, end;
-  start = clock();
-  // Warmup iterations
-  printf("Starting warmup...\n");
-  for (int i = 0; i < nwarmup; i++) {
-    update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
-    // update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
-    // update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
-  }
-
-  CHECK_CUDA(cudaDeviceSynchronize());
-
-  printf("Starting trial iterations...\n");
-  auto t0 = std::chrono::high_resolution_clock::now();
-  float av_energy = 0;
-  for (int i = 0; i < niters; i++) {
-    update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
-    // update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
-    // update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
-    calculate_spin_energy<<<blocks,THREADS>>>(lattice, spin_energy, nx, ny, j0, j1, j2);
-
-    CHECK_CUDA(cudaDeviceSynchronize());
-    double* devsum;
-    int nchunks = (nx * ny + CUB_CHUNK_SIZE - 1)/ CUB_CHUNK_SIZE;
-    CHECK_CUDA(cudaMalloc(&devsum,  nchunks * sizeof(*devsum)));
-    size_t cub_workspace_bytes = 0;
-    void* workspace = NULL;
-    CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, spin_energy, devsum, CUB_CHUNK_SIZE));
-    CHECK_CUDA(cudaMalloc(&workspace, cub_workspace_bytes));
-    for (int j = 0; j < nchunks; j++) {
-      CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, &spin_energy[j*CUB_CHUNK_SIZE], devsum + j,
-                              std::min((long long) CUB_CHUNK_SIZE, nx * ny - j * CUB_CHUNK_SIZE)));
+int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
+    float* total_energy = (float *)malloc((N_EQUILIBRIUM +N_AVERAGE + 1) * sizeof(float));
+    int **matrix = (int **)malloc(L*sizeof(int*));
+    for (int i = 0; i < L; i++) {
+        matrix[i] = (int*)malloc(N * sizeof(int));
     }
-
-    double* hostsum;
-    hostsum = (double*)malloc(nchunks * sizeof(*hostsum));
-    CHECK_CUDA(cudaMemcpy(hostsum, devsum, nchunks * sizeof(*devsum), cudaMemcpyDeviceToHost));
-    double fullsum = 0.0;
-    for (int j = 0; j < nchunks; j++) {
-      fullsum += hostsum[j];
+    float **randomMatrix = (float**) malloc(L*sizeof(float*));
+    for (int i = 0 ; i < L; i++) {
+        randomMatrix[i] = (float*)malloc(N*sizeof(float));
     }
+    float* total_energy2 = (float *)malloc((N_AVERAGE) * sizeof(float));
+    float* squareOfDistanceFromMean = (float *)malloc((N_AVERAGE) * sizeof(float));
     
-    CHECK_CUDA(cudaFree(devsum));
-    CHECK_CUDA(cudaFree(workspace));
-    free(hostsum);
-    total_energy[i] = fullsum;
-    av_energy += fullsum;
-    if (i % 1000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
-  }
-  av_energy /= niters;
-  float variance = 0;
-  for (int i = 0; i < niters; i++) {
-    variance += (total_energy[i]-av_energy)*(total_energy[i]-av_energy);
-  }
-  variance /= niters;
-  float specific_heat = variance / (t*t*nx*ny);
+    while (t < t_end) {
+        srand((unsigned) time(NULL));
+        clock_t start, end;
+    
+        /* Recording the starting clock tick.*/
+        start = clock(); 
+    
+        float J0 = 1.0;
+        float J1 = (1-alpha)* J0;
+        float J2 = -alpha*J0;
 
-  write_info(total_energy, av_energy * niters, av_energy, variance, niters);
-  write_values(fileName, t, specific_heat);
-  end = clock();
-  double time_taken = ((end-start)+0.0) / CLOCKS_PER_SEC;
+        initialize_matrix(N, matrix, randomMatrix);
+        initialize_total_energy(0, J0, J1, J2, N, matrix, total_energy);
+        
+        for (int i = 0; i < N_EQUILIBRIUM+N_AVERAGE; i++) {
+            flip_spins(BLACK, J0, J1, J2, t, N, matrix, randomMatrix);
+            reinitialize_random_matrix(N, randomMatrix);
+            flip_spins(WHITE, J0, J1, J2, t, N, matrix, randomMatrix);
+            reinitialize_random_matrix(N, randomMatrix);
+            flip_spins(GREEN, J0, J1, J2, t, N, matrix, randomMatrix);
+            reinitialize_random_matrix(N, randomMatrix);
+            initialize_total_energy(i+1, J0, J1, J2, N, matrix, total_energy);
+        }
+    
+        for (int i = 1 + N_EQUILIBRIUM; i < 1+N_EQUILIBRIUM+N_AVERAGE; i++) {
+            total_energy2[i-(1+N_EQUILIBRIUM)] = total_energy[i];
+        }
 
-  FILE *fptr4 = fopen("time_taken.txt", "a");
-  fprintf(fptr4, "%f, %f ", t,  specific_heat);
-  fprintf(fptr4, "%f sec", time_taken);
-  fprintf(fptr4, "\n");
-  fclose(fptr4);
-  auto t1 = std::chrono::high_resolution_clock::now();
+        int p = 1; 
+        while (p < N_AVERAGE) {
+            for (int i = 0; i+p < N_AVERAGE; i+= 2*p) {
+                total_energy2[i] = total_energy2[i] + total_energy2[i+p];
+            }
+            p *= 2;
+        }
+        float av_energy = total_energy2[0] / (N_AVERAGE);
+        
+        for (int i = 1+N_EQUILIBRIUM; i <  1+N_EQUILIBRIUM+N_AVERAGE; i++) {
+            squareOfDistanceFromMean[i - (1+N_EQUILIBRIUM)] = (total_energy[i]-av_energy)*(total_energy[i]-av_energy);
+        }
 
-  double duration = (double) std::chrono::duration_cast<std::chrono::microseconds>(t1-t0).count();
-  printf("REPORT:\n");
-  printf("\tnGPUs: %d\n", 1);
-  printf("\ttemperature: %f * %f\n", alpha, t);
-  printf("\tseed: %llu\n", seed);
-  printf("\twarmup iterations: %d\n", nwarmup);
-  printf("\ttrial iterations: %d\n", niters);
-  printf("\tlattice dimensions: %lld x %lld\n", nx, ny);
-  printf("\telapsed time: %f sec\n", duration * 1e-6);
-  printf("\tupdates per ns: %f\n", (double) (nx * ny) * niters / duration * 1e-3);
+        p = 1;
+        while (p < N_AVERAGE) {
+            for (int i = 0; i+p < N_AVERAGE; i+= 2*p) {
+                squareOfDistanceFromMean[i] = squareOfDistanceFromMean[i] + squareOfDistanceFromMean[i+p];
+            }
+            p *= 2;
+        }
+        squareOfDistanceFromMean[0] = squareOfDistanceFromMean[0] / (N_AVERAGE);
 
-  // Reduce
-  double* devsum;
-  int nchunks = (nx * ny + CUB_CHUNK_SIZE - 1)/ CUB_CHUNK_SIZE;
-  CHECK_CUDA(cudaMalloc(&devsum,  nchunks * sizeof(*devsum)));
-  size_t cub_workspace_bytes = 0;
-  void* workspace = NULL;
-  CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, lattice, devsum, CUB_CHUNK_SIZE));
-  CHECK_CUDA(cudaMalloc(&workspace, cub_workspace_bytes));
-  for (int i = 0; i < nchunks; i++) {
-    CHECK_CUDA(cub::DeviceReduce::Sum(workspace, cub_workspace_bytes, &lattice[i*CUB_CHUNK_SIZE], devsum + i,
-                           std::min((long long) CUB_CHUNK_SIZE, nx * ny - i * CUB_CHUNK_SIZE)));
-  }
+        float specific_heat = squareOfDistanceFromMean[0] / (t*t*L*N);
+        write_info(total_energy, total_energy2[0], av_energy, squareOfDistanceFromMean[0]);
+        write_values(filename, t, specific_heat);
+        
+        end = clock();
 
-  double* hostsum;
-  hostsum = (double*)malloc(nchunks * sizeof(*hostsum));
-  CHECK_CUDA(cudaMemcpy(hostsum, devsum, nchunks * sizeof(*devsum), cudaMemcpyDeviceToHost));
-  double fullsum = 0.0;
-  for (int i = 0; i < nchunks; i++) {
-    fullsum += hostsum[i];
-  }
-  std::cout << "\taverage magnetism (absolute): " << abs(fullsum / (nx * ny)) << std::endl;
-
-  return 0;
+        double time_taken = ((end - start)+0.0) / (CLOCKS_PER_SEC); 
+        printf("The program took %f seconds to execute", time_taken);
+        
+        FILE *fptr4 = fopen("time_taken.txt", "a");
+        fprintf(fptr4, "%f, %f ", t,  specific_heat);
+        fprintf(fptr4, "%f sec", time_taken);
+        fprintf(fptr4, "\n");
+        fclose(fptr4);
+        
+        t += step;
+    }
+    return 0;
 }
 
 int main(int argc, char* argv[]) {
-  float alpha = atof(argv[1]);
-  float t = atof(argv[2]);
-  char* fileName = argv[3];
-  int R = atoi(argv[4]);
-  int C = atoi(argv[5]);
-  int nwarmup = atoi(argv[6]);
-  int niters = atoi(argv[7]);
-  simulate(alpha, t, fileName, R, C, nwarmup, niters);
+    float alpha = atof(argv[1]);
+    float t = atof(argv[2]);
+    float t_end = atof(argv[3]);
+    float step = atof(argv[4]);
+    char* fileName = argv[5];
+    int N = atoi(argv[6]);
+    runc(alpha, t, t_end, step, fileName, N);
 }
