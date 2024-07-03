@@ -116,9 +116,9 @@ plt.plot(X2,Y2, color='g', label='2')
 plt.plot(X3,Y3, color='y', label='3')
 plt.plot(X4,Y4, color='b', label='4')
 
-plt.title('Line graph using CSV')
-plt.xlabel('X')
-plt.ylabel('Y')
+plt.title('')
+plt.xlabel('$k_{B}T/J_{0}$')
+plt.ylabel('C/R')
 plt.show()
 
 

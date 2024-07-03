@@ -80,10 +80,11 @@ plt.plot(X4,Y4,color='b', label='4')
 plt.plot(X5,Y5,color='c', label='5')
 
 
-plt.title('Line graph using CSV')
-plt.xlabel('X')
-plt.ylabel('Y')
+plt.title('')
+plt.xlabel('$k_{B}T/J_{0}$')
+plt.ylabel('C/R')
 plt.show()
+
 
 
 # lattice = np.loadtxt("energia_total.txt", dtype=np.int32)
