@@ -15,7 +15,7 @@ for i in range (len(alpha)):
     t_end = t + 0.02
     step = 1
     while(t <= t2[i]):
-        l = ["./simulator", str(alpha[i]), str(t), str(t_end), str(step), str(alpha[i])+".txt", "12", niters]
+        l = ["./simulator", str(alpha[i]), str(t), str(t_end), str(step), str(alpha[i])+".txt", "10", niters]
         subprocess.Popen(l, stdout=subprocess.PIPE)
         t += 0.02
         t_end += 0.02
