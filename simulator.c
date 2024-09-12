@@ -7,8 +7,8 @@
 #include <omp.h>
 
 #define L 177
-#define N_EQUILIBRIUM 100
-#define N_AVERAGE 1000
+#define N_EQUILIBRIUM 1000
+#define N_AVERAGE 10000
 
 enum Color {BLACK, WHITE, GREEN};
 
