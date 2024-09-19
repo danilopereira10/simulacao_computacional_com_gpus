@@ -212,7 +212,7 @@ int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, 
   // Warmup iterations
   printf("Starting warmup...\n");
   for (int i = 0; i < nwarmup; i++) {
-    update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
+    update(lattice, flip, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
     // update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
     // update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
   }
