@@ -53,6 +53,7 @@ __global__ void init_spins(signed char* lattice,
 
 __global__ void calculate_spin_energy(signed char* lattice,
                                  float* spin_energy,
+                  
                                   const long long nx,
                                   const long long ny,
                                   float j0, float j1, float j2) {
@@ -75,6 +76,7 @@ __global__ void calculate_spin_energy(signed char* lattice,
 }
 
 __global__ void update_lattice(enum Color color, signed char* lattice,
+                                int *flip,
                                const float* __restrict__ randvals,
                                const float inv_temp,
                                const long long nx,
@@ -105,11 +107,14 @@ __global__ void update_lattice(enum Color color, signed char* lattice,
   signed char lij = lattice[i * ny + j];
   float acceptance_ratio = exp(-2.0f * inv_temp * nn_sum * lij);
   if (randvals[i*ny + j] < acceptance_ratio) {
+    flip[i*ny + j] = 1;
     lattice[i * ny + j] = -lij;
+  } else {
+    flip[i*ny+j] = 0;
   }
 }
 
-void update(signed char *lattice, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny,
+void update(signed char *lattice, int* flip, float* randvals, curandGenerator_t rng, float inv_temp, long long nx, long long ny,
   float j0, float j1, float j2) {
 
   // Setup CUDA launch configuration
@@ -117,12 +122,12 @@ void update(signed char *lattice, float* randvals, curandGenerator_t rng, float 
 
   // Update black
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny));
-  update_lattice<<<blocks, THREADS>>>(Color::BLACK, lattice, randvals, inv_temp, nx, ny, j0, j1, j2);
+  update_lattice<<<blocks, THREADS>>>(Color::BLACK, lattice, flip, randvals, inv_temp, nx, ny, j0, j1, j2);
 
   // Update white
-  update_lattice<<<blocks, THREADS>>>(Color::WHITE, lattice  , randvals, inv_temp, nx, ny, j0, j1, j2);
+  update_lattice<<<blocks, THREADS>>>(Color::WHITE, lattice  , flip, randvals, inv_temp, nx, ny, j0, j1, j2);
 
-  update_lattice<<<blocks, THREADS>>>(Color::GREEN, lattice  , randvals, inv_temp, nx, ny, j0, j1, j2);
+  update_lattice<<<blocks, THREADS>>>(Color::GREEN, lattice  , flip, randvals, inv_temp, nx, ny, j0, j1, j2);
 }
 
 void write_info(float total_energy[], float total_energy_v, float av_energy, float variance, int niters) {
@@ -142,6 +147,20 @@ void write_info(float total_energy[], float total_energy_v, float av_energy, flo
 void write_values(char* filename, float t, float sh) {
     FILE *fptr3 = fopen(filename, "a");
     fprintf(fptr3, "%f, %f ", t,  sh);
+    fprintf(fptr3, "\n");
+    fclose(fptr3);
+}
+
+void write_energy(float energy) {
+    FILE *fptr3 = fopen("energy.txt", "a");
+    fprintf(fptr3, "%f ", energy);
+    fprintf(fptr3, "\n");
+    fclose(fptr3);
+}
+
+void write_flips(int flips) {
+    FILE *fptr3 = fopen("flips.txt", "a");
+    fprintf(fptr3, "%d ", flips);
     fprintf(fptr3, "\n");
     fclose(fptr3);
 }
@@ -178,8 +197,10 @@ int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, 
   // Setup black and white lattice arrays on device
   signed char *lattice;
   float *spin_energy;
+  int *flip;
   CHECK_CUDA(cudaMalloc(&spin_energy, nx*ny * sizeof(*spin_energy)));
   CHECK_CUDA(cudaMalloc(&lattice, nx * ny * sizeof(*lattice)));
+  CHECK_CUDA(cudaMalloc(&flip, nx*ny*sizeof(*flip)));
 
   int blocks = (nx * ny + THREADS - 1) / THREADS;
   CHECK_CURAND(curandGenerateUniform(rng, randvals, nx*ny));
@@ -202,7 +223,7 @@ int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, 
   auto t0 = std::chrono::high_resolution_clock::now();
   float av_energy = 0;
   for (int i = 0; i < niters; i++) {
-    update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
+    update(lattice, flip, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
     // update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
     // update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
     calculate_spin_energy<<<blocks,THREADS>>>(lattice, spin_energy, nx, ny, j0, j1, j2);
@@ -232,6 +253,32 @@ int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, 
     CHECK_CUDA(cudaFree(workspace));
     free(hostsum);
     total_energy[i] = fullsum;
+    write_energy(fullsum);
+    
+    int* devflipsum;
+    CHECK_CUDA(cudaMalloc(&devflipsum,  nchunks * sizeof(*devflipsum)));
+    size_t flipcub_workspace_bytes = 0;
+    void* flipworkspace = NULL;
+    CHECK_CUDA(cub::DeviceReduce::Sum(flipworkspace, flipcub_workspace_bytes, flip, devflipsum, CUB_CHUNK_SIZE));
+    CHECK_CUDA(cudaMalloc(&flipworkspace, flipcub_workspace_bytes));
+    for (int j = 0; j < nchunks; j++) {
+      CHECK_CUDA(cub::DeviceReduce::Sum(flipworkspace, flipcub_workspace_bytes, &flip[j*CUB_CHUNK_SIZE], devflipsum + j,
+                              std::min((long long) CUB_CHUNK_SIZE, nx * ny - j * CUB_CHUNK_SIZE)));
+    }
+
+    int* fliphostsum;
+    fliphostsum = (int*)malloc(nchunks * sizeof(*fliphostsum));
+    CHECK_CUDA(cudaMemcpy(fliphostsum, devflipsum, nchunks * sizeof(*devflipsum), cudaMemcpyDeviceToHost));
+    int flipfullsum = 0;
+    for (int j = 0; j < nchunks; j++) {
+      flipfullsum += fliphostsum[j];
+    }
+    
+    CHECK_CUDA(cudaFree(devflipsum));
+    CHECK_CUDA(cudaFree(flipworkspace));
+    free(fliphostsum);
+
+    write_flips(flipfullsum);
     av_energy += fullsum;
     if (i % 1000 == 0) printf("Completed %d/%d iterations...\n", i+1, niters);
   }
@@ -243,7 +290,7 @@ int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, 
   variance /= niters;
   float specific_heat = variance / (t*t*nx*ny);
 
-  write_info(total_energy, av_energy * niters, av_energy, variance, niters);
+  // write_info(total_energy, av_energy * niters, av_energy, variance, niters);
   write_values(fileName, t, specific_heat);
   end = clock();
   double time_taken = ((end-start)+0.0) / CLOCKS_PER_SEC;
