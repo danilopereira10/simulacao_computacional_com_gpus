@@ -3,7 +3,7 @@ CUDACC=$(CUDA_HOME)/bin/nvcc
 CC=gcc
 LD=$(CUDACC)
 LDFLAGS=-lcurand
-CFLAGS=-c -O3 -g -I$(CUDA_HOME)/include
+CFLAGS=-c -O3 -g -I$(CUDA_HOME)/include -I../..
 CUDACFLAGS= -std=c++17 -c -O3 -lineinfo -arch=sm_70 -Xptxas=-v -I../external/cub
 
 all: ising_basic
