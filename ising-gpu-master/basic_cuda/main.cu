@@ -25,7 +25,11 @@
 #include <getopt.h>
 #include <iostream>
 #include <string>
-#include "energy.h"
+
+extern "C" {
+#include "../../energy.h"
+}
+
 #include <time.h>
 
 #include <cuda_fp16.h>
