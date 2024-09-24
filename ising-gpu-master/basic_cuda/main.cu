@@ -25,6 +25,7 @@
 #include <getopt.h>
 #include <iostream>
 #include <string>
+#include "../../energy.h"
 #include <time.h>
 
 #include <cuda_fp16.h>
@@ -38,6 +39,7 @@
 
 #define TCRIT 2.26918531421f
 #define THREADS  128
+#define L 176
 
 enum Color {BLACK, WHITE, GREEN};
 
@@ -158,11 +160,27 @@ void write_energy(float energy) {
     fclose(fptr3);
 }
 
+void write_energy2(float energy) {
+    FILE *fptr3 = fopen("energy2.txt", "a");
+    fprintf(fptr3, "%f ", energy);
+    fprintf(fptr3, "\n");
+    fclose(fptr3);
+}
+
 void write_flips(int flips) {
     FILE *fptr3 = fopen("flips.txt", "a");
     fprintf(fptr3, "%d ", flips);
     fprintf(fptr3, "\n");
     fclose(fptr3);
+}
+
+void initialize_matrix(int N, int** matrix, float** randomMatrix) {
+    for (int i = 0; i < L; i++) {
+        for (int j = 0; j < N; j++) {
+            matrix[i][j] = 1;
+            // randomMatrix[i][j] = ((float) (rand() / (float)(RAND_MAX)));
+        }
+    }
 }
 
 int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, int niters) {
@@ -211,6 +229,15 @@ int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, 
   start = clock();
   // Warmup iterations
   printf("Starting warmup...\n");
+  int **matrix = (int **)malloc(L*sizeof(int*));
+  for (int i = 0; i < nx; i++) {
+      matrix[i] = (int*)malloc(ny * sizeof(int));
+  }
+  initialize_matrix(ny, matrix);
+  float* total_energy2 = (float *)malloc((nwarmup +niters + 1) * sizeof(float));
+    
+  calculate_total_energy(0, j0, j1, j2, ny, matrix, total_energy2);
+  write_energy2(total_energy2[0]);
   for (int i = 0; i < nwarmup; i++) {
     update(lattice, flip, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
     // update(lattice, randvals, rng, inv_temp, nx, ny, j0, j1, j2);
