@@ -174,7 +174,7 @@ void write_flips(int flips) {
     fclose(fptr3);
 }
 
-void initialize_matrix(int N, int** matrix, float** randomMatrix) {
+void initialize_matrix(int N, int** matrix) {
     for (int i = 0; i < L; i++) {
         for (int j = 0; j < N; j++) {
             matrix[i][j] = 1;
