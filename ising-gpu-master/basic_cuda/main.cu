@@ -25,7 +25,7 @@
 #include <getopt.h>
 #include <iostream>
 #include <string>
-#include "../../energy.h"
+#include "energy.h"
 #include <time.h>
 
 #include <cuda_fp16.h>
@@ -233,7 +233,7 @@ int simulate(float alpha, float t, char* fileName, int nx, int ny, int nwarmup, 
   for (int i = 0; i < nx; i++) {
       matrix[i] = (int*)malloc(ny * sizeof(int));
   }
-  initialize_matrix(ny, matrix);
+  initialize_matrix(ny, matrix);  
   float* total_energy2 = (float *)malloc((nwarmup +niters + 1) * sizeof(float));
     
   calculate_total_energy(0, j0, j1, j2, ny, matrix, total_energy2);
