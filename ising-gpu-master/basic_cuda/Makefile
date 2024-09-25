@@ -12,7 +12,7 @@ all: ising_basic
 ising_basic: main.o
 	$(LD) -o ising_basic main.o $(LDFLAGS) -ccbin g++ -m64 -gencode arch=compute_70,code=sm_70 -lm
 
-energy.o: energy.c
+../../energy.o: ../../energy.c
 	gcc $(GFLAGS) -g -c $< -o $@
 
 %.o: %.cu
