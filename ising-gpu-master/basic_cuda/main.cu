@@ -72,8 +72,8 @@ __global__ void flip_spins(enum Color color, float J0, float J1, float J2, float
 //   int i = (idx) / N;
 //   int j = idx % N;
 int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  int i = blockIdx.x;
-  int j = threadIdx.x;
+  int i = (idx) / N;
+  int j = idx % N;
 
             if ((idx < n) && ((j%3) == ((i+color)%3)) && (j < (N - 3))) {
             
@@ -103,8 +103,8 @@ __global__ void flip_spins2(enum Color color, float J0, float J1, float J2, floa
 //   int i = (idx) / N;
 //   int j = idx % N;
 int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  int i = blockIdx.x;
-  int j = threadIdx.x;
+  int i = (idx) / N;
+  int j = idx % N;
 
             if ((idx < n) && ((j%3) == ((i+color)%3)) && (j >= (N - 3))) {
             
