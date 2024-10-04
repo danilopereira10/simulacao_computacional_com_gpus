@@ -14,7 +14,8 @@ niters = "1000"
 for i in range (len(alpha)):
     t = t1[i]
     while(t <= t2[i]):
-        l = ["./ising_basic", str(alpha[i]), str(t), str(alpha[i])+"_cu.txt", "176", "10", nwarmup, niters]
+        t_end = t + 0.02
+        l = ["./ising_basic", str(alpha[i]), str(t), str(t_end), str(1), str(alpha[i])+"_cu.txt", "10", niters]
         subprocess.check_call(l, stdout=subprocess.PIPE)
         t += 0.02
         j +=1
