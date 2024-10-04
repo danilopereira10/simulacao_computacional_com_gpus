@@ -72,10 +72,10 @@ __global__ void flip_spins(enum Color color, float J0, float J1, float J2, float
 //   int i = (idx) / N;
 //   int j = idx % N;
 int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  int i = (idx) / 10;
-  int j = idx % 10;
+  int i = (idx) / N;
+  int j = idx % N;
 
-            if ((idx < n) && ((j%3) == ((i+color)%3)) && (j < (N - 3))) {
+            if ((idx < n) && ((j%3) == ((i+color)%3)) && (i < (L-3)) && (j < (N - 3))) {
             
 
             int jless = (j - 1 >= 0) ? j - 1 : N -1;
@@ -103,10 +103,40 @@ __global__ void flip_spins2(enum Color color, float J0, float J1, float J2, floa
 //   int i = (idx) / N;
 //   int j = idx % N;
 int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  int i = (idx) / 10;
-  int j = idx % 10;
+  int i = (idx) / N;
+  int j = idx % N;
 
-            if ((idx < n) && ((j%3) == ((i+color)%3)) && (j >= (N - 3))) {
+            if ((idx < n) && ((j%3) == ((i+color)%3)) && !((i >= L-3) && (j >= (N - 3))) && ((i>=L-3) || (j>=N-3))) {
+            
+
+            int jless = (j - 1 >= 0) ? j - 1 : N -1;
+            int jplus = (j + 1 < N) ? j + 1 : 0;
+            int iless = (i - 1 >= 0) ? i - 1 : L - 1;
+            int iplus = (i + 1 < L) ? i + 1 : 0;
+            int iplus2 = ((i+2) < L) ? i+2 : i+2-L;
+            int iless2 = ((i-2) > -1) ? i - 2 : i - 2 + L;
+            
+            float sum = J1*(matrix[iplus*N+j]+matrix[iless*N+j])+J2*(matrix[iless2*N+j] +matrix[iplus2*N+j]) + J0*(matrix[i*N+jless] + matrix[i*N+jplus]);
+            int mij = matrix[i*N+j];
+            float acceptance_ratio = exp(-2.0f * sum * mij / t);
+
+            if (randomMatrix[i*N+j] < acceptance_ratio) {
+            matrix[i*N+j] = -mij;
+            }
+        }
+        
+      
+}
+
+__global__ void flip_spins3(enum Color color, float J0, float J1, float J2, float t, int N, int* matrix, float* randomMatrix, int n) {
+//   int idx = threadIdx.x + blockIdx.x * blockDim.x;
+//   int i = (idx) / N;
+//   int j = idx % N;
+int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int i = (idx) / N;
+  int j = idx % N;
+
+            if ((idx < n) && ((j%3) == ((i+color)%3)) && ((i >= L-3) && (j >= (N - 3)))) {
             
 
             int jless = (j - 1 >= 0) ? j - 1 : N -1;
@@ -177,6 +207,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
             flip_spins<<<BL,T>>>(BLACK, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
             cudaDeviceSynchronize();
             flip_spins2<<<BL,T>>>(BLACK, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
+            flip_spins3<<<BL,T>>>(BLACK, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
             cudaDeviceSynchronize();
             reinitialize_random_matrix(N, randomMatrix);
 
@@ -185,6 +216,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
             flip_spins<<<BL,T>>>(WHITE, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
             cudaDeviceSynchronize();
             flip_spins2<<<BL,T>>>(WHITE, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
+            flip_spins3<<<BL,T>>>(WHITE, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
             cudaDeviceSynchronize();
             reinitialize_random_matrix(N, randomMatrix);
 
@@ -193,6 +225,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
             flip_spins<<<BL,T>>>(GREEN, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
             cudaDeviceSynchronize();
             flip_spins2<<<BL,T>>>(GREEN, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
+            flip_spins3<<<BL,T>>>(GREEN, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
             cudaDeviceSynchronize();
             reinitialize_random_matrix(N, randomMatrix);
 
