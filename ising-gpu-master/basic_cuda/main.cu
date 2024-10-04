@@ -178,6 +178,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
             reinitialize_random_matrix(N, randomMatrix);
 
             cudaMemcpy(matrix, d_matrix, bytes, cudaMemcpyDeviceToHost);
+            cudaDeviceSynchronize();
             calculate_total_energy(i+1, J0, J1, J2, N, matrix, total_energy);
         }
     
