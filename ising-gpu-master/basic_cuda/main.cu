@@ -1,4 +1,3 @@
-#include <__clang_cuda_builtin_vars.h>
 #include <limits.h>
 #include <time.h>
 #include <stdlib.h>
