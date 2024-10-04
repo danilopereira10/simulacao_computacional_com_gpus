@@ -67,52 +67,60 @@ void calculate_total_energy(int d, float J0, float J1, float J2, int N, int* mat
     total_energy[d] = sum / 2;
 }
 
-__global__ void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, int* matrix, float* randomMatrix, int n) {
-  int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  int i = (idx) / L;
-  int j = idx % N;
-  if ((idx < n) && ((j%3) == ((i+color)%3)) && (j < (N - 3))) {
-    
+void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, int* matrix, float* randomMatrix, int n) {
+//   int idx = threadIdx.x + blockIdx.x * blockDim.x;
+//   int i = (idx) / L;
+//   int j = idx % N;
+    for (int i = 0; i < L; i++) {
+        for (int j = (i+color)%3 ; j < N; j++) {
+            if ((((i*N)+j) < n) && ((j%3) == ((i+color)%3)) && (j < (N - 3))) {
+            
 
-    int jless = (j - 1 >= 0) ? j - 1 : N -1;
-    int jplus = (j + 1 < N) ? j + 1 : 0;
-    int iless = (i - 1 >= 0) ? i - 1 : L - 1;
-    int iplus = (i + 1 < L) ? i + 1 : 0;
-    int iplus2 = ((i+2) < L) ? i+2 : i+2-L;
-    int iless2 = ((i-2) > -1) ? i - 2 : i - 2 + L;
-    
-    float sum = J1*(matrix[iplus*N+j]+matrix[iless*N+j])+J2*(matrix[iless2*N+j] +matrix[iplus2*N+j]) + J0*(matrix[i*N+jless] + matrix[i*N+jplus]);
-    int mij = matrix[i*N+j];
-    float acceptance_ratio = exp(-2.0f * sum * mij / t);
+            int jless = (j - 1 >= 0) ? j - 1 : N -1;
+            int jplus = (j + 1 < N) ? j + 1 : 0;
+            int iless = (i - 1 >= 0) ? i - 1 : L - 1;
+            int iplus = (i + 1 < L) ? i + 1 : 0;
+            int iplus2 = ((i+2) < L) ? i+2 : i+2-L;
+            int iless2 = ((i-2) > -1) ? i - 2 : i - 2 + L;
+            
+            float sum = J1*(matrix[iplus*N+j]+matrix[iless*N+j])+J2*(matrix[iless2*N+j] +matrix[iplus2*N+j]) + J0*(matrix[i*N+jless] + matrix[i*N+jplus]);
+            int mij = matrix[i*N+j];
+            float acceptance_ratio = exp(-2.0f * sum * mij / t);
 
-    if (randomMatrix[i*N+j] < acceptance_ratio) {
-      matrix[i*N+j] = -mij;
+            if (randomMatrix[i*N+j] < acceptance_ratio) {
+            matrix[i*N+j] = -mij;
+            }
+        }
+        
+        }
     }
-  }
+  
 }
 
-__global__ void flip_spins2(enum Color color, float J0, float J1, float J2, float t, int N, int* matrix, float* randomMatrix, int n) {
-  int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  int i = (idx) / L;
-  int j = idx % N;
-  if ((idx < n) && ((j%3) == ((i+color)%3)) && (j >= (N - 3))) {
-    
+void flip_spins2(enum Color color, float J0, float J1, float J2, float t, int N, int* matrix, float* randomMatrix, int n) {
+  for (int i = 0; i < L; i++) {
+        for (int j = (i+color)%3 ; j < N; j++) {
+            if ((((i*N)+j) < n) && ((j%3) == ((i+color)%3)) && (j >= (N - 3))) {
+            
 
-    int jless = (j - 1 >= 0) ? j - 1 : N -1;
-    int jplus = (j + 1 < N) ? j + 1 : 0;
-    int iless = (i - 1 >= 0) ? i - 1 : L - 1;
-    int iplus = (i + 1 < L) ? i + 1 : 0;
-    int iplus2 = ((i+2) < L) ? i+2 : i+2-L;
-    int iless2 = ((i-2) > -1) ? i - 2 : i - 2 + L;
-    
-    float sum = J1*(matrix[iplus*N+j]+matrix[iless*N+j])+J2*(matrix[iless2*N+j] +matrix[iplus2*N+j]) + J0*(matrix[i*N+jless] + matrix[i*N+jplus]);
-    int mij = matrix[i*N+j];
-    float acceptance_ratio = exp(-2.0f * sum * mij / t);
+            int jless = (j - 1 >= 0) ? j - 1 : N -1;
+            int jplus = (j + 1 < N) ? j + 1 : 0;
+            int iless = (i - 1 >= 0) ? i - 1 : L - 1;
+            int iplus = (i + 1 < L) ? i + 1 : 0;
+            int iplus2 = ((i+2) < L) ? i+2 : i+2-L;
+            int iless2 = ((i-2) > -1) ? i - 2 : i - 2 + L;
+            
+            float sum = J1*(matrix[iplus*N+j]+matrix[iless*N+j])+J2*(matrix[iless2*N+j] +matrix[iplus2*N+j]) + J0*(matrix[i*N+jless] + matrix[i*N+jplus]);
+            int mij = matrix[i*N+j];
+            float acceptance_ratio = exp(-2.0f * sum * mij / t);
 
-    if (randomMatrix[i*N+j] < acceptance_ratio) {
-      matrix[i*N+j] = -mij;
+            if (randomMatrix[i*N+j] < acceptance_ratio) {
+            matrix[i*N+j] = -mij;
+            }
+        }
+        
+        }
     }
-  }
 }
 
 
@@ -158,27 +166,27 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
         int T = 128;
         int BL = (L*N + (T-1)) / T;
         for (int i = 0; i < N_EQUILIBRIUM+N_AVERAGE; i++) {
-            cudaMemcpy(d_matrix, matrix, bytes, cudaMemcpyHostToDevice);
-            cudaMemcpy(d_randomMatrix, randomMatrix, bytes2, cudaMemcpyHostToDevice);
-            flip_spins<<<BL, T>>>(BLACK, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
-            flip_spins2<<<BL, T>>>(BLACK, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
-            cudaDeviceSynchronize();
+            // cudaMemcpy(d_matrix, matrix, bytes, cudaMemcpyHostToDevice);
+            // cudaMemcpy(d_randomMatrix, randomMatrix, bytes2, cudaMemcpyHostToDevice);
+            flip_spins(BLACK, J0, J1, J2, t, N, matrix, randomMatrix, L*N);
+            flip_spins2(BLACK, J0, J1, J2, t, N, matrix, randomMatrix, L*N);
+            // cudaDeviceSynchronize();
             reinitialize_random_matrix(N, randomMatrix);
 
-            cudaMemcpy(d_randomMatrix, randomMatrix, bytes2, cudaMemcpyHostToDevice);
-            flip_spins<<<BL, T>>>(WHITE, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
-            flip_spins2<<<BL, T>>>(WHITE, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
-            cudaDeviceSynchronize();
+            // cudaMemcpy(d_randomMatrix, randomMatrix, bytes2, cudaMemcpyHostToDevice);
+            flip_spins(WHITE, J0, J1, J2, t, N, matrix, randomMatrix, L*N);
+            flip_spins2(WHITE, J0, J1, J2, t, N, matrix, randomMatrix, L*N);
+            // cudaDeviceSynchronize();
             reinitialize_random_matrix(N, randomMatrix);
 
-            cudaMemcpy(d_randomMatrix, randomMatrix, bytes2, cudaMemcpyHostToDevice);
-            flip_spins<<<BL, T>>>(GREEN, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
-            flip_spins2<<<BL, T>>>(GREEN, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
-            cudaDeviceSynchronize();
+            // cudaMemcpy(d_randomMatrix, randomMatrix, bytes2, cudaMemcpyHostToDevice);
+            flip_spins(GREEN, J0, J1, J2, t, N, matrix, randomMatrix, L*N);
+            flip_spins2(GREEN, J0, J1, J2, t, N, matrix, randomMatrix, L*N);
+            // cudaDeviceSynchronize();
             reinitialize_random_matrix(N, randomMatrix);
 
-            cudaMemcpy(matrix, d_matrix, bytes, cudaMemcpyDeviceToHost);
-            cudaDeviceSynchronize();
+            // cudaMemcpy(matrix, d_matrix, bytes, cudaMemcpyDeviceToHost);
+            // cudaDeviceSynchronize();
             calculate_total_energy(i+1, J0, J1, J2, N, matrix, total_energy);
         }
     
