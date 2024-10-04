@@ -68,11 +68,10 @@ void calculate_total_energy(int d, float J0, float J1, float J2, int N, int* mat
 }
 
 __global__ void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, int* matrix, float* randomMatrix, int n) {
-//   int idx = threadIdx.x + blockIdx.x * blockDim.x;
-//   int i = (idx) / L;
-//   int j = idx % N;
-    for (int i = 0; i < L; i++) {
-        for (int j = (i+color)%3 ; j < N; j++) {
+  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int i = (idx) / N;
+  int j = idx % N;
+
             if ((((i*N)+j) < n) && ((j%3) == ((i+color)%3)) && (j < (N - 3))) {
             
 
@@ -92,14 +91,15 @@ __global__ void flip_spins(enum Color color, float J0, float J1, float J2, float
             }
         }
         
-        }
-    }
+   
   
 }
 
 __global__ void flip_spins2(enum Color color, float J0, float J1, float J2, float t, int N, int* matrix, float* randomMatrix, int n) {
-  for (int i = 0; i < L; i++) {
-        for (int j = (i+color)%3 ; j < N; j++) {
+  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int i = (idx) / N;
+  int j = idx % N;
+
             if ((((i*N)+j) < n) && ((j%3) == ((i+color)%3)) && (j >= (N - 3))) {
             
 
@@ -119,8 +119,7 @@ __global__ void flip_spins2(enum Color color, float J0, float J1, float J2, floa
             }
         }
         
-        }
-    }
+      
 }
 
 
@@ -168,20 +167,20 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
         for (int i = 0; i < N_EQUILIBRIUM+N_AVERAGE; i++) {
             cudaMemcpy(d_matrix, matrix, bytes, cudaMemcpyHostToDevice);
             cudaMemcpy(d_randomMatrix, randomMatrix, bytes2, cudaMemcpyHostToDevice);
-            flip_spins<<<1,1>>>(BLACK, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
-            flip_spins2<<<1,1>>>(BLACK, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
+            flip_spins<<<BL,T>>>(BLACK, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
+            flip_spins2<<<BL,T>>>(BLACK, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
             cudaDeviceSynchronize();
             reinitialize_random_matrix(N, randomMatrix);
 
             cudaMemcpy(d_randomMatrix, randomMatrix, bytes2, cudaMemcpyHostToDevice);
-            flip_spins<<<1,1>>>(WHITE, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
-            flip_spins2<<<1,1>>>(WHITE, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
+            flip_spins<<<BL,T>>>(WHITE, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
+            flip_spins2<<<BL,T>>>(WHITE, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
             cudaDeviceSynchronize();
             reinitialize_random_matrix(N, randomMatrix);
 
             cudaMemcpy(d_randomMatrix, randomMatrix, bytes2, cudaMemcpyHostToDevice);
-            flip_spins<<<1,1>>>(GREEN, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
-            flip_spins2<<<1,1>>>(GREEN, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
+            flip_spins<<<BL,T>>>(GREEN, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
+            flip_spins2<<<BL,T>>>(GREEN, J0, J1, J2, t, N, d_matrix, d_randomMatrix, L*N);
             cudaDeviceSynchronize();
             reinitialize_random_matrix(N, randomMatrix);
 
