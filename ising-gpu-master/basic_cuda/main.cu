@@ -24,10 +24,11 @@ void initialize_matrix(int N, int* matrix, float* randomMatrix) {
             myfile >> a;
             matrix[i*N+j] = 1;
             randomMatrix[i*N+j] = ((float) (rand() / (float)(RAND_MAX)));
-            getchar();
+            
         }
-        getchar();
+        
     }
+    getchar();
 }
 
 void reinitialize_random_matrix(int N, float* randomMatrix) {
