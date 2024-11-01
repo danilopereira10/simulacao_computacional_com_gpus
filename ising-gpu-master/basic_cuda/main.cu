@@ -22,7 +22,7 @@ void initialize_matrix(int N, int* matrix, float* randomMatrix) {
         for (int j = 0; j < N; j++) {
             int a;
             myfile >> a;
-            matrix[i*N+j] = 1;
+            matrix[i*N+j] = a;
             randomMatrix[i*N+j] = ((float) (rand() / (float)(RAND_MAX)));
             
         }
