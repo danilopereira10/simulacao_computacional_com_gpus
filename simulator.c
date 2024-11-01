@@ -21,7 +21,7 @@ void initialize_matrix(int N, int** matrix, float** randomMatrix) {
     }
 }
 
-void write_matrix(int N, int** matrix, float** randomMatrix) {
+void write_matrix(int N, int** matrix) {
     FILE *fptr = fopen("matrix.txt", "w");
     for (int i = 0; i < L; i++) {
         for (int j = 0; j < N; j++) {
@@ -165,7 +165,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
         float specific_heat = squareOfDistanceFromMean[0] / (t*t*L*N);
         write_info(total_energy, total_energy2[0], av_energy, squareOfDistanceFromMean[0]);
         write_values(filename, t, specific_heat);
-        write_matrix(matrix);
+        write_matrix(N, matrix);
         
         end = clock();
 
