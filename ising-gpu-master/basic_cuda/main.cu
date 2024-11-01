@@ -21,11 +21,12 @@ void initialize_matrix(int N, int* matrix, float* randomMatrix) {
     for (int i = 0; i < L; i++) {
         for (int j = 0; j < N; j++) {
             int a;
-            //myfile >> a;
+            myfile >> a;
             matrix[i*N+j] = 1;
-            //getchar();
             randomMatrix[i*N+j] = ((float) (rand() / (float)(RAND_MAX)));
+            getchar();
         }
+        getchar();
     }
 }
 
