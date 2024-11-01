@@ -5,6 +5,8 @@
 #include <math.h>
 #include <string.h>
 #include <omp.h>
+#include <iostream>
+#include <fstream>
 
 #define L 176
 #define N_EQUILIBRIUM 1000
@@ -13,9 +15,15 @@
 enum Color {BLACK, WHITE, GREEN};
 
 void initialize_matrix(int N, int* matrix, float* randomMatrix) {
+    std::fstream myfile("matrix.txt", std::ios_base::in);
+
+
     for (int i = 0; i < L; i++) {
         for (int j = 0; j < N; j++) {
-            matrix[i*N+j] = 1;
+            int a;
+            myfile >> a;
+            matrix[i*N+j] = a;
+            getchar();
             randomMatrix[i*N+j] = ((float) (rand() / (float)(RAND_MAX)));
         }
     }
@@ -158,6 +166,12 @@ int idx = threadIdx.x + blockIdx.x * blockDim.x;
       
 }
 
+void write_energy(float total_energy) {
+    FILE *fptr = fopen("energia_inicial.txt", "a");
+    fprintf(fptr, "CUDA: %f \n", total_energy);
+    fclose(fptr);
+}
+
 
 int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
     float* total_energy = (float *)malloc((N_EQUILIBRIUM +N_AVERAGE + 1) * sizeof(float));
@@ -198,6 +212,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
 
         initialize_matrix(N, matrix, randomMatrix);
         calculate_total_energy(0, J0, J1, J2, N, matrix, total_energy);
+        write_energy(total_energy[0]);
         int T = 128;
         int BL = (L*N + (T-1)) / T;
         for (int i = 0; i < N_EQUILIBRIUM+N_AVERAGE; i++) {

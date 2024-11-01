@@ -61,6 +61,12 @@ void flip_spins(enum Color color, float J0, float J1, float J2, float t, int N, 
     }
 }
 
+void write_energy(float total_energy) {
+    FILE *fptr = fopen("energia_inicial.txt", "a");
+    fprintf(fptr, "C: %f \n", total_energy);
+    fclose(fptr);
+}
+
 void write_info(float total_energy[], float total_energy_v, float av_energy, float variance) {
     FILE *fptr = fopen("energias.txt", "w");
     for (int i = 1+N_EQUILIBRIUM; i < 1+N_EQUILIBRIUM+N_AVERAGE; i++) {
@@ -125,6 +131,7 @@ int runc(float alpha, float t, float t_end, float step, char* filename, int N) {
 
         initialize_matrix(N, matrix, randomMatrix);
         calculate_total_energy(0, J0, J1, J2, N, matrix, total_energy);
+        write_energy(total_energy[0]);
         
         for (int i = 0; i < N_EQUILIBRIUM+N_AVERAGE; i++) {
             flip_spins(BLACK, J0, J1, J2, t, N, matrix, randomMatrix);
