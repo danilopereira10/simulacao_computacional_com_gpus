@@ -15,7 +15,7 @@ enum Color {BLACK, WHITE, GREEN};
 void initialize_matrix(int N, int** matrix, float** randomMatrix) {
     for (int i = 0; i < L; i++) {
         for (int j = 0; j < N; j++) {
-            matrix[i][j] = 1;
+            matrix[i][j] = ((float) (rand() / (float)(RAND_MAX))) <= 0.5 ? 1 : -1;
             randomMatrix[i][j] = ((float) (rand() / (float)(RAND_MAX)));
         }
     }
