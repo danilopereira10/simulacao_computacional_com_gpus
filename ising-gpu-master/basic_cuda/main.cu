@@ -28,7 +28,6 @@ void initialize_matrix(int N, int* matrix, float* randomMatrix) {
         }
         
     }
-    getchar();
 }
 
 void reinitialize_random_matrix(int N, float* randomMatrix) {
